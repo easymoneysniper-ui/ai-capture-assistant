@@ -72,6 +72,23 @@ if ($hk.Key -eq 0) {
     exit 1
 }
 
+# 把实际生效的热键写回 hotkey.ini（保留注释；用无 BOM UTF-8，避免下次读取乱码）
+function Save-Hotkey([string]$spec) {
+    try {
+        if (-not (Test-Path $iniPath)) { return }
+        $content = [System.IO.File]::ReadAllText($iniPath, [System.Text.Encoding]::UTF8)
+        if ($content -match '(?im)^\s*Hotkey\s*=.*$') {
+            $content = [regex]::Replace($content, '(?im)^\s*Hotkey\s*=.*$', ('Hotkey = ' + $spec))
+        } else {
+            $content = $content.TrimEnd() + "`r`nHotkey = $spec`r`n"
+        }
+        [System.IO.File]::WriteAllText($iniPath, $content, (New-Object System.Text.UTF8Encoding($false)))
+        Log ("配置已更新为 " + $spec)
+    } catch {
+        Log ("写入配置失败: " + $_.Exception.Message)
+    }
+}
+
 # ---------- 截图与遮罩 ----------
 Add-Type -TypeDefinition @'
 using System;
@@ -313,17 +330,50 @@ $form.Location = New-Object System.Drawing.Point(-32000, -32000)
 $form.Width = 1; $form.Height = 1
 $form.add_Hot({ Invoke-Capture })
 
-$form.add_HandleCreated({
+# 注册时机放在 Shown（此时句柄已创建完成）。旧版在 HandleCreated 里直接
+# $form.Close()，会抛 "执行 CreateHandle() 时无法调用值 Close()"。
+$script:hkRegistered = $false
+$form.add_Shown({
+    if ($script:hkRegistered) { return }
+    $script:hkRegistered = $true
+
+    $wanted = $cfg.Hotkey
     $ok = [SC]::RegisterHotKey($form.Handle, 0x534E41, [uint32]$hk.Mod, [uint32]$hk.Key)
     $err = [System.Runtime.InteropServices.Marshal]::GetLastWin32Error()
     if ($ok) {
         Log ("热键注册成功 " + $cfg.Hotkey)
-    } else {
-        Log ("热键注册失败 err=" + $err)
-        $msg = if ($err -eq 1409) { "热键 $($cfg.Hotkey) 已被占用，请改 hotkey.ini" } else { "热键注册失败 err=$err" }
-        [System.Windows.Forms.MessageBox]::Show($msg, "AI 截图助手") | Out-Null
-        $form.Close()
+        $notify.Text = "AI 截图助手 - $($cfg.Hotkey)"
+        return
     }
+
+    Log ("热键注册失败 err=" + $err + "，尝试备选组合")
+    $tried = @($wanted)
+    foreach ($candidate in @('Ctrl+Alt+A', 'Ctrl+Shift+F9', 'Ctrl+Alt+Shift+S')) {
+        if ($tried -contains $candidate) { continue }
+        $tried += $candidate
+        $h = ParseHotkey $candidate
+        if ($h.Key -eq 0) { continue }
+        if ([SC]::RegisterHotKey($form.Handle, 0x534E41, [uint32]$h.Mod, [uint32]$h.Key)) {
+            $hk = $h
+            $cfg.Hotkey = $candidate
+            Save-Hotkey $candidate
+            $notify.Text = "AI 截图助手 - $candidate"
+            Log ("已改用备选热键 " + $candidate)
+            try {
+                $notify.ShowBalloonTip(4000, "AI 截图助手", "热键 $wanted 已被占用，已自动改用 $candidate", [System.Windows.Forms.ToolTipIcon]::Info)
+            } catch { }
+            return
+        }
+    }
+
+    Log "所有备选热键都注册失败"
+    $msg = "热键 $wanted 已被其他程序占用，备选组合也不可用。`n`n请修改 hotkey.ini 里的 Hotkey 后重新启动。"
+    [System.Windows.Forms.MessageBox]::Show($msg, "AI 截图助手") | Out-Null
+    try { $notify.Visible = $false; $notify.Dispose() } catch { }
+    $form.Close()
+})
+$form.add_FormClosing({
+    try { [SC]::UnregisterHotKey($form.Handle, 0x534E41) | Out-Null } catch { }
 })
 
 if (-not $Quiet) {
