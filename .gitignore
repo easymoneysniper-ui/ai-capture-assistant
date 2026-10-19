@@ -17,6 +17,11 @@ captures/
 iso.out
 .simkey.ps1
 
+# ---- 本地发布辅助脚本（只给我自己用，不随项目分发）----
+推送到GitHub.bat
+push-to-github.ps1
+GitHub开源操作手册.md
+
 # ---- 编辑器 / 操作系统 ----
 .vscode/
 .idea/
