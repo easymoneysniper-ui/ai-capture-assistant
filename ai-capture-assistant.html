@@ -1,0 +1,4102 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI 截屏录屏助手</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235b8cff' stroke-width='2' stroke-linecap='round'%3E%3Crect x='2' y='3' width='20' height='14' rx='2'/%3E%3Cline x1='8' y1='21' x2='16' y2='21'/%3E%3Cline x1='12' y1='17' x2='12' y2='21'/%3E%3C/svg%3E">
+<style>
+:root{
+  --bg:#0e1016; --panel:#161a23; --panel2:#1b202c; --line:#262d3b; --line2:#2f3a4d;
+  --txt:#e8ebf2; --muted:#9aa4b8; --dim:#6b7488;
+  --acc1:#4f7cff; --acc2:#8b5cf6; --ok:#34c47c; --warn:#f2b03c; --danger:#f25b5b;
+  --grad:linear-gradient(135deg,#4f7cff,#8b5cf6);
+  --radius:14px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  background:var(--bg); color:var(--txt);
+  font-family:"Segoe UI","Microsoft YaHei",system-ui,-apple-system,sans-serif;
+  font-size:14px; overflow:hidden;
+  background-image:radial-gradient(1200px 600px at 80% -10%, rgba(79,124,255,.10), transparent 60%),
+                   radial-gradient(900px 500px at 0% 110%, rgba(139,92,246,.08), transparent 60%);
+}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:#2a3242;border-radius:6px;border:2px solid var(--bg)}
+::-webkit-scrollbar-track{background:transparent}
+.hidden{display:none !important}
+button{font-family:inherit;font-size:14px;color:var(--txt);border:none;background:none;cursor:pointer}
+button:disabled{opacity:.45;cursor:not-allowed}
+input,select,textarea{
+  font-family:inherit;font-size:13px;color:var(--txt);
+  background:#10141d;border:1px solid var(--line2);border-radius:10px;padding:8px 10px;outline:none;
+}
+input:focus,select:focus,textarea:focus{border-color:var(--acc1)}
+textarea{resize:vertical;line-height:1.6}
+
+#app{display:flex;height:100vh}
+#sidebar{
+  width:224px;flex-shrink:0;background:rgba(18,22,31,.92);border-right:1px solid var(--line);
+  display:flex;flex-direction:column;padding:18px 14px;
+}
+.brand{display:flex;align-items:center;gap:10px;padding:4px 6px 16px;border-bottom:1px solid var(--line)}
+.brand .logo{width:38px;height:38px;border-radius:12px;background:var(--grad);display:flex;align-items:center;justify-content:center;color:#fff;flex-shrink:0}
+.brand .logo svg{width:22px;height:22px}
+.brand-name{font-size:15px;font-weight:700}
+.brand-sub{font-size:11px;color:var(--dim);margin-top:2px}
+nav{flex:1;display:flex;flex-direction:column;gap:4px;padding-top:14px}
+.nav-item{
+  display:flex;align-items:center;gap:11px;padding:11px 12px;border-radius:11px;color:var(--muted);
+  transition:background .15s,color .15s;text-align:left;
+}
+.nav-item svg{width:19px;height:19px;flex-shrink:0}
+.nav-item:hover{background:var(--panel2);color:var(--txt)}
+.nav-item.active{background:linear-gradient(135deg,rgba(79,124,255,.16),rgba(139,92,246,.16));color:#fff;font-weight:600}
+.nav-item.active svg{color:var(--acc1)}
+.sidebar-foot{margin-top:14px;padding:12px;border-radius:12px;background:var(--panel);border:1px solid var(--line);font-size:11px;color:var(--dim);line-height:1.9}
+.sidebar-foot b{color:var(--muted)}
+kbd{background:#232a3a;border:1px solid var(--line2);border-bottom-width:2px;border-radius:5px;padding:0 5px;font-size:11px;font-family:inherit;color:var(--txt)}
+
+#main{flex:1;overflow:hidden;position:relative}
+.view{position:absolute;inset:0;overflow-y:auto;padding:30px 34px 60px;display:none}
+.view.active{display:block;animation:fadein .22s ease}
+@keyframes fadein{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+h1{font-size:24px;font-weight:700;letter-spacing:.3px}
+.sub{color:var(--muted);margin:7px 0 26px;font-size:13.5px}
+
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:20px;margin-bottom:18px}
+.panel-title{font-size:14.5px;font-weight:600;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.panel-title svg{width:17px;height:17px;color:var(--acc1)}
+.hint{margin-top:14px;font-size:12px;color:var(--dim);line-height:1.8;background:rgba(79,124,255,.06);border:1px dashed rgba(79,124,255,.3);border-radius:10px;padding:10px 14px}
+
+.primary{background:var(--grad);color:#fff;font-weight:600;border-radius:12px;padding:12px 22px;box-shadow:0 4px 18px rgba(90,110,255,.28);transition:transform .12s,box-shadow .12s}
+.primary:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 6px 22px rgba(90,110,255,.36)}
+.secondary{background:var(--panel2);border:1px solid var(--line2);color:var(--txt);border-radius:12px;padding:11px 20px;transition:background .15s}
+.secondary:hover{background:#232a3a}
+.danger{background:linear-gradient(135deg,#f25b5b,#d93f6c);color:#fff;font-weight:600;border-radius:12px;padding:12px 22px;box-shadow:0 4px 16px rgba(242,91,91,.3)}
+.ghost{color:var(--muted);border:1px solid var(--line2);border-radius:10px;padding:9px 16px}
+.ghost:hover{color:var(--txt);background:var(--panel2)}
+
+.card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px}
+.big-card{
+  background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:24px 20px;text-align:left;
+  display:flex;flex-direction:column;gap:10px;transition:border-color .18s,transform .18s,box-shadow .18s;
+}
+.big-card:hover{border-color:var(--acc1);transform:translateY(-3px);box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.big-card .ic{width:44px;height:44px;border-radius:13px;background:rgba(79,124,255,.13);display:flex;align-items:center;justify-content:center;color:var(--acc1)}
+.big-card .ic svg{width:22px;height:22px}
+.big-card .t{font-size:16px;font-weight:700}
+.big-card .d{font-size:12px;color:var(--muted);line-height:1.6}
+
+.opt-row{display:flex;align-items:center;gap:14px;margin-bottom:14px;flex-wrap:wrap}
+.opt-row label{color:var(--txt);font-weight:600;min-width:110px}
+.opt-hint{font-size:12px;color:var(--dim);line-height:1.7;flex:1;min-width:200px}
+.switch{display:inline-flex;align-items:center;gap:9px;cursor:pointer;font-weight:500 !important;color:var(--txt)}
+.switch input{display:none}
+.switch i{width:36px;height:20px;border-radius:10px;background:#2a3040;position:relative;transition:background .2s;flex-shrink:0}
+.switch i::after{content:'';position:absolute;left:2px;top:2px;width:16px;height:16px;border-radius:50%;background:#7c8496;transition:left .2s,background .2s}
+.switch input:checked+i{background:linear-gradient(90deg,var(--acc1),var(--acc2))}
+.switch input:checked+i::after{left:18px;background:#fff}
+
+/* editor */
+#editor-wrap{display:flex;flex-direction:column;height:100%}
+#editor-toolbar{
+  display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:10px 14px;
+  background:var(--panel);border:1px solid var(--line);border-radius:14px;margin-bottom:14px;
+}
+.tgroup{display:flex;align-items:center;gap:4px;padding:0 8px;border-right:1px solid var(--line);margin-right:4px}
+.tgroup:last-child{border-right:none}
+.tbtn{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;color:var(--muted);cursor:pointer;position:relative}
+.tbtn svg{width:19px;height:19px}
+.tbtn:hover{background:var(--panel2);color:var(--txt)}
+.tbtn.active{background:rgba(79,124,255,.18);color:var(--acc1);box-shadow:inset 0 0 0 1px rgba(79,124,255,.5)}
+.tbtn .tip{position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);background:#0c0f16;border:1px solid var(--line2);padding:4px 9px;border-radius:7px;font-size:11px;color:var(--txt);white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .15s;z-index:5}
+.tbtn:hover .tip{opacity:1}
+.tsep{width:1px;height:24px;background:var(--line);margin:0 4px}
+.topt{display:flex;align-items:center;gap:8px;margin:0 4px}
+.topt input[type=color]{width:30px;height:30px;padding:0;border:1px solid var(--line2);border-radius:8px;background:none;cursor:pointer}
+.topt input[type=range]{width:70px;accent-color:var(--acc1)}
+.topt label{font-size:11px;color:var(--dim)}
+#editor-stage{flex:1;display:flex;align-items:center;justify-content:center;background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden;position:relative;min-height:0}
+#editor-canvas,#editor-overlay{position:absolute;max-width:100%;max-height:100%;border-radius:8px;box-shadow:0 8px 30px rgba(0,0,0,.4)}
+#editor-overlay{pointer-events:none}
+.editor-empty{color:var(--dim);font-size:13px}
+
+/* record */
+.rec-head{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.rec-dot{width:12px;height:12px;border-radius:50%;background:var(--danger);animation:pulse 1.2s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(242,91,91,.5)}70%{box-shadow:0 0 0 9px rgba(242,91,91,0)}100%{box-shadow:0 0 0 0 rgba(242,91,91,0)}}
+#rec-timer{font-size:22px;font-variant-numeric:tabular-nums;letter-spacing:1px}
+#rec-status{color:var(--muted);font-size:12px}
+#rec-preview{width:100%;max-height:52vh;border-radius:12px;background:#05070b;border:1px solid var(--line)}
+.rec-btns{display:flex;gap:12px;margin-top:16px}
+.rec-meta{font-size:13px;color:var(--muted);line-height:2}
+.rec-result-btns{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap}
+
+/* AI view */
+.ai-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:18px;align-items:start}
+#drop-zone{border:2px dashed var(--line2);border-radius:12px;padding:34px 20px;text-align:center;color:var(--muted);cursor:pointer;transition:border-color .2s,background .2s}
+#drop-zone:hover,#drop-zone.drag{border-color:var(--acc1);background:rgba(79,124,255,.06)}
+#ai-preview-wrap img{max-width:100%;max-height:280px;border-radius:10px;border:1px solid var(--line)}
+.mini-btns{display:flex;gap:10px;margin-top:12px}
+.ai-ocr-head{display:flex;align-items:center;gap:12px;margin:14px 0 8px}
+#ai-ocr-progress{color:var(--dim);font-size:12px;flex:1}
+#ai-ocr-text{width:100%;height:150px;background:#10141d}
+#sum-rec-select{width:100%;margin-bottom:12px}
+pre.textout,#sum-result pre{
+  white-space:pre-wrap;word-break:break-word;background:#10141d;border:1px solid var(--line2);border-radius:10px;
+  padding:12px;font-size:13px;line-height:1.7;color:var(--txt);font-family:inherit;
+  max-height:52vh;overflow:auto;
+}
+#sum-text{width:100%;min-height:200px;background:#10141d;border:1px solid var(--line2);border-radius:10px;padding:12px;white-space:pre-wrap;font-size:13px;line-height:1.7;max-height:52vh;overflow:auto}
+
+/* history */
+.tabs{display:flex;gap:6px;margin-bottom:18px}
+.tab{padding:9px 22px;border-radius:10px;color:var(--muted);background:var(--panel);border:1px solid var(--line)}
+.tab.active{color:#fff;background:linear-gradient(135deg,rgba(79,124,255,.2),rgba(139,92,246,.2));border-color:rgba(79,124,255,.45);font-weight:600}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px}
+.hcard{background:var(--panel);border:1px solid var(--line);border-radius:13px;overflow:hidden;transition:border-color .15s,transform .15s}
+.hcard:hover{border-color:var(--acc1);transform:translateY(-2px)}
+.hcard .thumb{height:118px;background:#05070b;display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:pointer}
+.hcard .thumb img{width:100%;height:100%;object-fit:cover}
+.hcard .thumb video{width:100%;height:100%;object-fit:cover}
+.hcard .meta{padding:10px 12px}
+.hcard .nm{font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:3px}
+.hcard .dt{font-size:11px;color:var(--dim)}
+.hcard .acts{display:flex;gap:4px;padding:8px 10px;border-top:1px solid var(--line)}
+.hcard .acts button{flex:1;font-size:11.5px;padding:6px 4px;border-radius:8px;color:var(--muted);background:var(--panel2);transition:color .15s,background .15s}
+.hcard .acts button:hover{color:#fff;background:#2a3242}
+.empty{padding:60px 20px;text-align:center;color:var(--dim)}
+.empty svg{width:54px;height:54px;opacity:.35;margin-bottom:14px}
+.empty p{font-size:13px;line-height:2}
+
+/* settings */
+.set-grid{max-width:640px}
+.set-row{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:13px 0;border-bottom:1px solid var(--line)}
+.set-row .lbl{font-weight:600;font-size:13.5px}
+.set-row .sub-lbl{font-size:11.5px;color:var(--dim);margin-top:3px}
+.set-row select,.set-row input{width:230px}
+.set-actions{margin-top:22px;display:flex;gap:12px}
+
+/* modal / toast / region / countdown */
+#modal-root{position:fixed;inset:0;z-index:60;pointer-events:none}
+.mask{position:fixed;inset:0;background:rgba(5,7,12,.7);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;z-index:60;animation:fadein .18s ease;pointer-events:auto}
+.modal{width:min(560px,92vw);max-height:84vh;overflow:auto;background:var(--panel);border:1px solid var(--line2);border-radius:16px;padding:22px;box-shadow:0 24px 70px rgba(0,0,0,.55);animation:pop .18s ease}
+.modal.wide{width:min(860px,94vw)}
+@keyframes pop{from{opacity:0;transform:scale(.97)}to{opacity:1;transform:none}}
+.modal h3{font-size:16px;margin-bottom:14px}
+.modal .m-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:18px;flex-wrap:wrap}
+.modal .m-body{font-size:13px;color:var(--txt);line-height:1.8}
+#toast-root{position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:80;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none}
+.toast{background:#1a1f2b;border:1px solid var(--line2);border-left:3px solid var(--acc1);color:var(--txt);padding:10px 18px;border-radius:10px;font-size:13px;box-shadow:0 8px 26px rgba(0,0,0,.4);animation:slidein .22s ease;max-width:420px}
+.toast.err{border-left-color:var(--danger)}
+.toast.ok{border-left-color:var(--ok)}
+@keyframes slidein{from{opacity:0;transform:translateY(-12px)}to{opacity:1;transform:none}}
+#region-mask{position:fixed;inset:0;z-index:70;background:#000;display:flex;align-items:center;justify-content:center;cursor:crosshair}
+#region-canvas{border-radius:4px;box-shadow:0 0 60px rgba(0,0,0,.6)}
+.region-tip{
+  position:fixed;top:22px;left:50%;transform:translateX(-50%);z-index:71;
+  background:rgba(16,20,29,.92);border:1px solid var(--line2);border-radius:12px;padding:10px 20px;
+  font-size:13px;display:flex;align-items:center;gap:14px;pointer-events:none;
+}
+.region-tip b{color:var(--acc1)}
+#countdown{position:fixed;inset:0;z-index:75;background:rgba(5,7,12,.55);display:flex;align-items:center;justify-content:center;font-size:120px;font-weight:800;color:#fff;text-shadow:0 6px 40px rgba(79,124,255,.5);letter-spacing:2px}
+@media (max-width:860px){#sidebar{width:72px;padding:14px 8px}.brand-name,.brand-sub,.nav-item span,.sidebar-foot{display:none}.nav-item{justify-content:center}.view{padding:20px 16px 50px}}
+</style>
+</head>
+<body>
+<div id="app">
+  <aside id="sidebar">
+    <div class="brand">
+      <div class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/><path d="M7.5 8.5 8 7h.5L9 8.5 10.5 9 9 9.5 8.5 11 8 9.5 6.5 9Z"/></svg></div>
+      <div><div class="brand-name">AI 截屏录屏助手</div><div class="brand-sub">智能屏幕工具 · 本地优先</div></div>
+    </div>
+    <nav>
+      <button class="nav-item active" data-view="capture"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg><span>截屏</span></button>
+      <button class="nav-item" data-view="record"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 8-6 4 6 4V8Z"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg><span>录屏</span></button>
+      <button class="nav-item" data-view="ai"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></svg><span>AI 识别</span></button>
+      <button class="nav-item" data-view="history"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg><span>历史记录</span></button>
+      <button class="nav-item" data-view="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg><span>设置</span></button>
+    </nav>
+    <div class="sidebar-foot"><b>快捷键</b><br><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd> 全屏截图<br><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>R</kbd> 开始/停止录制</div>
+  </aside>
+
+  <main id="main">
+    <section id="view-capture" class="view active">
+      <div id="capture-idle">
+        <h1>截屏</h1>
+        <p class="sub">一键截取屏幕，内置 AI 文字识别、敏感信息打码与专业标注工具</p>
+        <div class="card-grid">
+          <button class="big-card" id="btn-full-shot">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg></div>
+            <div class="t">全屏截图</div><div class="d">一次截取整块屏幕，直接进入标注与 AI 分析</div>
+          </button>
+          <button class="big-card" id="btn-region-shot">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="9" x2="15" y2="15" stroke-dasharray="3 3"/></svg></div>
+            <div class="t">区域截图</div><div class="d">截取后拖动框选任意区域，精确裁剪所需内容</div>
+          </button>
+          <button class="big-card" id="btn-delay-shot">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+            <div class="t">延时截图</div><div class="d">3 / 5 / 10 秒倒计时，捕捉菜单、悬浮层等动态界面</div>
+          </button>
+        </div>
+        <div id="delay-opt" style="margin-top:14px;display:flex;gap:8px">
+          <button class="secondary delay-btn active" data-sec="3">3 秒</button>
+          <button class="secondary delay-btn" data-sec="5">5 秒</button>
+          <button class="secondary delay-btn" data-sec="10">10 秒</button>
+        </div>
+        <div class="hint">提示：浏览器会弹出「共享屏幕」选择器，请选择要截取的屏幕 / 窗口 / 标签页；<b>请勿选择正在运行本工具的标签页</b>，否则会出现画面递归。所有截屏、识别均在本机完成，数据不会上传。</div>
+      </div>
+      <div id="editor-wrap" class="hidden">
+        <div id="editor-toolbar">
+          <div class="tgroup">
+            <button class="tbtn active" data-tool="pen" title="画笔"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg><span class="tip">画笔</span></button>
+            <button class="tbtn" data-tool="arrow" title="箭头"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20 20 4"/><polyline points="13 4 20 4 20 11"/></svg><span class="tip">箭头</span></button>
+            <button class="tbtn" data-tool="rect" title="矩形"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/></svg><span class="tip">矩形框</span></button>
+            <button class="tbtn" data-tool="text" title="文字"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg><span class="tip">文字标注</span></button>
+            <button class="tbtn" data-tool="mosaic" title="马赛克"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg><span class="tip">马赛克涂抹</span></button>
+            <button class="tbtn" data-tool="blurbox" title="打码框"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg><span class="tip">打码框</span></button>
+            <button class="tbtn" data-tool="crop" title="裁剪"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M18 22V8a2 2 0 0 0-2-2H2"/></svg><span class="tip">裁剪</span></button>
+          </div>
+          <div class="topt">
+            <input type="color" id="ed-color" value="#ff5252">
+            <input type="range" id="ed-size" min="2" max="40" value="5">
+            <label id="ed-size-lbl">5</label>
+          </div>
+          <div class="tgroup">
+            <button class="tbtn" data-filter="enhance" title="增强"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></svg><span class="tip">对比度增强</span></button>
+            <button class="tbtn" data-filter="bw" title="黑白"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="12" y1="3" x2="12" y2="21"/></svg><span class="tip">转黑白</span></button>
+            <button class="tbtn" data-filter="raw" title="还原"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg><span class="tip">撤销到原始</span></button>
+          </div>
+          <div class="tgroup">
+            <button class="tbtn" data-act="undo" title="撤销"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg><span class="tip">撤销</span></button>
+            <button class="tbtn" data-act="redo" title="重做"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13"/></svg><span class="tip">重做</span></button>
+          </div>
+          <div class="tgroup">
+            <button class="tbtn" data-act="ai-ocr" title="AI 识别文字"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg><span class="tip">AI 识别文字</span></button>
+            <button class="tbtn" data-act="ai-redact" title="自动打码敏感信息"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg><span class="tip">自动打码敏感信息</span></button>
+            <button class="tbtn" data-act="ai-name" title="AI 智能命名"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/><path d="M5 15l2 2-2 2"/></svg><span class="tip">AI 智能命名</span></button>
+            <button class="tbtn" data-act="translate" title="截图翻译"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="m22 22-5-10-5 10"/><path d="M14 18h6"/></svg><span class="tip">截图翻译（原文原位替换）</span></button>
+          </div>
+          <div class="tgroup">
+            <button class="tbtn" data-act="copy" title="复制到剪贴板"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span class="tip">复制</span></button>
+            <button class="tbtn" data-act="download" title="下载图片"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg><span class="tip">下载</span></button>
+            <button class="tbtn" data-act="finish" title="保存到历史并退出" style="color:var(--ok)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg><span class="tip">保存并退出</span></button>
+          </div>
+        </div>
+        <div id="editor-stage">
+          <canvas id="editor-canvas"></canvas>
+          <canvas id="editor-overlay"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <section id="view-record" class="view">
+      <div id="record-idle">
+        <h1>录屏</h1>
+        <p class="sub">录制屏幕与声音，自动抽取关键帧，AI 一键总结录屏内容</p>
+        <div class="panel">
+          <div class="panel-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 8-6 4 6 4V8Z"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg>录制设置</div>
+          <div class="opt-row"><label>内容来源</label><span class="opt-hint">点击录制后浏览器弹出选择器，可任选：整个屏幕 / 应用窗口 / 浏览器标签页（建议选整个屏幕或目标应用窗口）</span></div>
+          <div class="opt-row"><label>音频</label><label class="switch"><input type="checkbox" id="opt-sys-audio" checked><i></i>系统声音</label><label class="switch"><input type="checkbox" id="opt-mic" checked><i></i>麦克风</label></div>
+          <div class="opt-row"><label>帧率</label><select id="opt-fps"><option>24</option><option selected>30</option><option>60</option></select></div>
+          <div class="opt-row"><label>关键帧间隔</label><select id="opt-keyframe"><option value="3">3 秒</option><option value="5" selected>5 秒</option><option value="10">10 秒</option></select><span class="opt-hint">录制时自动抓取画面，用于结束后 AI 总结时间线</span></div>
+        </div>
+        <button id="btn-start-rec" class="primary" style="font-size:16px;padding:15px 34px">● 开始录制</button>
+      </div>
+      <div id="record-live" class="hidden">
+        <div class="rec-head"><span class="rec-dot"></span><b id="rec-timer">00:00</b><span id="rec-status">正在录制…</span></div>
+        <video id="rec-preview" autoplay muted playsinline></video>
+        <div class="rec-btns">
+          <button id="btn-pause-rec" class="secondary">暂停</button>
+          <button id="btn-stop-rec" class="danger">停止录制</button>
+        </div>
+        <div class="hint">录制内容将在本机保存。停止后自动存入历史记录，并可一键生成 AI 总结。</div>
+      </div>
+        <div id="record-result" class="hidden">
+        <div class="panel">
+          <div class="panel-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>录制完成</div>
+          <div class="rec-meta" id="rec-meta"></div>
+          <div class="rec-result-btns">
+            <button id="btn-play-rec" class="secondary">▶ 播放预览</button>
+            <button id="btn-dl-rec" class="secondary">下载文件</button>
+            <button id="btn-summary-rec" class="primary">✦ AI 智能总结</button>
+            <button id="btn-new-rec" class="ghost">再录一段</button>
+          </div>
+        </div>
+        <div id="summary-box" class="panel hidden">
+          <div class="panel-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></svg>AI 总结</div>
+          <pre id="sum-text" class="textout"></pre>
+          <div style="display:flex;gap:10px;margin-top:12px"><button id="btn-copy-summary" class="ghost">复制总结</button><button id="btn-save-summary" class="ghost">保存到录制记录</button></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="view-ai" class="view">
+      <h1>AI 识别</h1>
+      <p class="sub">图片文字识别、敏感信息扫描打码、录屏内容智能总结</p>
+      <div class="ai-grid">
+        <div class="panel">
+          <div class="panel-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>图片文字识别 / 敏感信息打码</div>
+          <div id="drop-zone">点击选择图片，或将图片拖入此处<br><span style="font-size:11px;color:var(--dim)">支持 PNG / JPG / WebP，识别在本机完成</span></div>
+          <input type="file" id="ai-file" accept="image/*" class="hidden">
+          <div id="ai-preview-wrap" class="hidden">
+            <img id="ai-preview" alt="预览">
+            <div class="mini-btns">
+              <button id="btn-ai-ocr" class="primary">识别文字</button>
+              <button id="btn-ai-scan" class="secondary">扫描敏感信息</button>
+              <button id="btn-ai-translate" class="secondary">🌐 翻译</button>
+            </div>
+          </div>
+          <div id="ai-ocr-box" class="hidden">
+            <div class="ai-ocr-head"><b>识别结果</b><span id="ai-ocr-progress"></span><button id="btn-copy-ocr" class="ghost">复制文字</button></div>
+            <textarea id="ai-ocr-text" readonly></textarea>
+          </div>
+          <div id="ai-ocr-status" class="hint hidden"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></svg>录屏 AI 总结</div>
+          <p class="opt-hint">从历史记录中选择一段录屏，自动抽取关键帧进行 OCR，生成内容时间线与要点；在「设置」中配置 LLM API 后，可输出结构化深度总结。</p>
+          <select id="sum-rec-select"></select>
+          <button id="btn-gen-summary" class="primary" style="width:100%">生成总结</button>
+          <div id="sum-result" class="hidden">
+            <div style="display:flex;gap:10px;margin:14px 0 8px"><button id="btn-copy-summary2" class="ghost">复制总结</button></div>
+            <pre id="sum-text2"></pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="view-history" class="view">
+      <h1>历史记录</h1>
+      <p class="sub">截图与录制均保存在本机浏览器中</p>
+      <div class="tabs"><button class="tab active" data-tab="shots">截图</button><button class="tab" data-tab="recs">录制</button></div>
+      <div id="hist-empty" class="empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg><p>还没有内容<br>去「截屏」或「录屏」开始吧</p></div>
+      <div id="hist-grid" class="grid"></div>
+    </section>
+
+    <section id="view-settings" class="view">
+      <h1>设置</h1>
+      <p class="sub">所有配置保存在本机浏览器</p>
+      <div class="panel set-grid">
+        <div class="set-row"><div><div class="lbl">OCR 识别语言</div><div class="sub-lbl">语言模型（tessdata）已随程序放在本机，识别全程离线，不会上传图片</div></div><select id="set-ocr-lang"><option value="chi_sim+eng">简体中文 + 英文（推荐）</option><option value="chi_sim">仅简体中文</option><option value="eng">仅英文</option></select></div>
+        <div class="set-row"><div><div class="lbl">OCR 识别精度上限</div><div class="sub-lbl">图片越大识别越慢，按长边缩放提速（默认 1200 均衡）</div></div><select id="set-ocr-side"><option value="900">极速（900px）</option><option value="1200" selected>均衡（1200px）</option><option value="1800">精细（1800px）</option></select></div>
+        <div class="set-row"><div><div class="lbl">截图保存格式</div><div class="sub-lbl" id="set-shot-hint">PNG 无损 / JPEG 更小</div></div><select id="set-shot-format"><option value="image/png">PNG（无损）</option><option value="image/jpeg">JPEG（压缩）</option></select></div>
+        <div class="set-row hidden" id="row-shot-quality"><div><div class="lbl">JPEG 压缩质量</div><div class="sub-lbl">数值越高越清晰、体积越大</div></div><div class="topt"><input type="range" id="set-shot-quality" min="0.5" max="0.98" step="0.02" value="0.92"><label id="set-shot-quality-lbl">0.92</label></div></div>
+        <div class="set-row"><div><div class="lbl">LLM 深度总结（可选）</div><div class="sub-lbl">配置任意 OpenAI 兼容接口，用于录屏结构化总结</div></div><label class="switch"><input type="checkbox" id="set-llm-enabled"><i></i>启用</label></div>
+        <div class="set-row"><div><div class="lbl">API 地址</div><div class="sub-lbl">如 DeepSeek / Moonshot / OpenAI 等</div></div><input id="set-llm-base" placeholder="https://api.deepseek.com/v1"></div>
+        <div class="set-row"><div><div class="lbl">API Key</div><div class="sub-lbl">仅保存在本机，不会上传</div></div><input id="set-llm-key" type="password" placeholder="sk-..."></div>
+        <div class="set-row"><div><div class="lbl">模型名称</div></div><input id="set-llm-model" placeholder="deepseek-chat"></div>
+        <div class="set-row"><div><div class="lbl">截图翻译引擎</div><div class="sub-lbl">「免费在线」无需配置即可用；「大模型」复用下面的 API，译文更自然。翻译只上传识别出的文字，图片始终留在本机</div></div><select id="set-tr-engine"><option value="free">免费在线翻译（免配置）</option><option value="llm">大模型翻译（用下方 API）</option></select></div>
+        <div class="set-row"><div><div class="lbl">默认原文语言</div><div class="sub-lbl">截图里文字的语言，选错会明显影响识别率</div></div><select id="set-tr-from"></select></div>
+        <div class="set-row"><div><div class="lbl">默认目标语言</div><div class="sub-lbl">想翻译成的语言</div></div><select id="set-tr-to"></select></div>
+        <div class="set-row"><div><div class="lbl">默认呈现方式</div><div class="sub-lbl">「原位替换」重建背景后写译文，接近原生界面；「底条」保留原图只在译文后面加半透明条，复杂背景更稳妥；「对照文本」只输出译文列表</div></div><select id="set-tr-mode"><option value="overlay">原位替换（推荐）</option><option value="band">半透明底条（复杂背景）</option><option value="text">仅对照文本</option></select></div>
+        <div class="set-row"><div><div class="lbl">补漏识别按钮文字（实验）</div><div class="sub-lbl">截图里并排的彩色按钮（红底白字等）常被 OCR 整体跳过。开启后会对这类色块裁剪放大重识别，能把按钮文字找回来，但可能把旁边的正文一起读进来、产生个别碎片词，按需开启</div></div><label class="switch"><input type="checkbox" id="set-tr-recover"><i></i>启用</label></div>
+        <div class="set-row"><div><div class="lbl">OCR 语言包</div><div class="sub-lbl" id="set-tr-packs">检查中…</div></div><button class="ghost" id="btn-tr-download">下载全部语言包</button></div>
+        <div class="set-row"><div><div class="lbl">OCR 引擎状态</div><div class="sub-lbl" id="set-ocr-status">检测中…</div></div><button class="ghost" id="btn-ocr-reload">重新加载模型</button></div>
+        <div class="set-row"><div><div class="lbl">全局截图热键</div><div class="sub-lbl" id="set-hk-hint">需先运行「启动全局热键.bat」。开启后可在任何界面按快捷键截图，点下面的输入框再按组合键即可修改</div></div><input id="set-hotkey" readonly placeholder="点击后按下组合键…" style="width:180px;cursor:pointer;text-align:center"><button class="ghost" id="btn-hotkey-save">应用</button></div>
+        <div class="set-row"><div><div class="lbl">页面内快捷键</div><div class="sub-lbl">仅在助手页面处于前台时生效，无需额外程序</div></div><span class="opt-hint">Ctrl+Shift+S 截全屏 · Ctrl+Shift+R 开始/停止录屏 · Esc 取消</span></div>
+        <div class="set-actions"><button id="btn-save-settings" class="primary">保存设置</button><button id="btn-reset-settings" class="ghost">恢复默认</button></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div id="region-mask" class="hidden">
+  <div class="region-tip"><span>拖动鼠标<b>框选截图区域</b>，松开即裁剪 · <kbd>Esc</kbd> 取消</span><span id="region-cancel" style="cursor:pointer;color:var(--danger);pointer-events:auto">取消</span></div>
+  <canvas id="region-canvas"></canvas>
+</div>
+<div id="countdown" class="hidden"></div>
+<div id="modal-root"></div>
+<div id="toast-root"></div>
+
+<script>
+'use strict';
+const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+
+const DEFAULTS = {
+  ocrLang:'chi_sim+eng', ocrSide:1200, shotFormat:'image/png', shotQuality:0.92,
+  ocrQuality:'std',
+  llmEnabled:false, llmBase:'https://api.deepseek.com/v1', llmKey:'', llmModel:'deepseek-chat',
+  // 截图翻译
+  trEngine:'free', trFrom:'auto', trTo:'zh-CN', trMode:'overlay', trFont:'',
+  trRecoverMissing:false,
+  // 全局热键（与 hotkey.ini 同步）
+  hotkey:'Ctrl+Alt+S'
+};
+let S = Object.assign({}, DEFAULTS, JSON.parse(localStorage.getItem('aics_settings')||'{}'));
+
+const ICON = {
+  clock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
+  scan:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg>',
+  play:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>',
+  download:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>',
+  trash:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>'
+};
+
+function toast(msg, type=''){
+  const t = document.createElement('div');
+  t.className = 'toast '+type;
+  t.textContent = msg;
+  $('#toast-root').appendChild(t);
+  setTimeout(()=>{ t.style.opacity='0'; t.style.transition='opacity .3s'; setTimeout(()=>t.remove(),320); }, 2600);
+}
+function fmtDate(d){ const p=n=>String(n).padStart(2,'0'); return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}`; }
+function fmtTS(sec){ sec=Math.max(0,Math.floor(sec||0)); const p=n=>String(n).padStart(2,'0'); return `${p(Math.floor(sec/60))}:${p(sec%60)}`; }
+function fmtSize(b){ if(b>1048576) return (b/1048576).toFixed(1)+' MB'; return Math.max(1,Math.round(b/1024))+' KB'; }
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+function safeName(s){ return (s||'未命名').replace(/[\\/:*?"<>|\r\n\t]/g,' ').replace(/\s+/g,' ').trim().slice(0,40)||'未命名'; }
+
+function openModal({title, body, actions, wide, onClose}){
+  const mask = document.createElement('div');
+  mask.className = 'mask';
+  const m = document.createElement('div');
+  m.className = 'modal'+(wide?' wide':'');
+  let bHtml = typeof body==='string' ? body : '';
+  const bodyEl = document.createElement('div');
+  bodyEl.className='m-body';
+  // body 可以是字符串、元素，也可以不传（调用方稍后自己往 .m-body 里塞内容）。
+  // 不传时必须什么都不做：appendChild(undefined) 会抛
+  // "parameter 1 is not of type 'Node'"，把弹窗整个建不出来。
+  if(typeof body === 'string') bodyEl.innerHTML = body;
+  else if(body instanceof Node) bodyEl.appendChild(body);
+  const head = document.createElement('h3'); head.textContent = title;
+  const act = document.createElement('div'); act.className='m-actions';
+  if(!actions) actions = [{label:'关闭', cls:'ghost'}];
+  const close = ()=>{ mask.remove(); onClose&&onClose(); };
+  actions.forEach(a=>{
+    const btn = document.createElement('button');
+    btn.className = a.cls||'ghost';
+    btn.textContent = a.label;
+    btn.onclick = ()=> (a.onClick ? a.onClick(close) : close());
+    act.appendChild(btn);
+  });
+  m.append(head, bodyEl, act);
+  mask.appendChild(m);
+  $('#modal-root').appendChild(mask);
+  return {close, el:mask};
+}
+function askText({title, label, value, placeholder, okLabel='确定'}){
+  return new Promise(res=>{
+    const inp = document.createElement('input');
+    inp.value = value||''; inp.placeholder = placeholder||'';
+    inp.style.width='100%';
+    openModal({title, actions:[
+      {label:'取消', cls:'ghost', onClick:close=>{close(); res(null);}},
+      {label:okLabel, cls:'primary', onClick:close=>{close(); res(inp.value);}}
+    ], body: (()=>{
+      const w=document.createElement('div');
+      // 这里曾经是 w.append(label ? div : null)：label 为空时传入 null，
+      // append 内部会对每个参数调 appendChild，于是抛
+      // "parameter 1 is not of type 'Node'"。改成只在有 label 时才追加。
+      if(label){
+        const lab=document.createElement('div');
+        lab.style.cssText='font-size:12px;color:var(--dim);margin-bottom:8px';
+        lab.textContent=label;
+        w.appendChild(lab);
+      }
+      w.appendChild(inp);
+      return w;
+    })()});
+  });
+}
+function askName(def){
+  return new Promise(res=>{
+    const inp = document.createElement('input');
+    inp.value = def||''; inp.style.width='100%';
+    openModal({title:'保存文件', actions:[
+      {label:'取消', cls:'ghost', onClick:close=>{close(); res(null);}},
+      {label:'保存', cls:'primary', onClick:close=>{close(); res(inp.value || def);}}
+    ], body: (()=>{ const w=document.createElement('div'); const lab=document.createElement('div'); lab.style.cssText='font-size:12px;color:var(--dim);margin-bottom:8px'; lab.textContent='文件名'; w.appendChild(lab); w.appendChild(inp); return w; })()});
+  });
+}
+
+const DB_NAME='aics-db', DB_VER=1;
+function openDB(){ return new Promise((res,rej)=>{ const r=indexedDB.open(DB_NAME,DB_VER); r.onupgradeneeded=e=>{ const db=r.result; if(!db.objectStoreNames.contains('shots')) db.createObjectStore('shots',{keyPath:'id'}); if(!db.objectStoreNames.contains('recs')) db.createObjectStore('recs',{keyPath:'id'}); }; r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
+let _db=null;
+async function db(){ if(!_db) _db = await openDB(); return _db; }
+// 存储失败必须让人看到：以前这里是「静默吞掉异常 + 提示已保存」，用户会以为数据存住了
+function dbFail(e, action){
+  console.error('IndexedDB', action, e);
+  toast(`本地存储${action}失败（可能是隐私模式或空间不足），数据未能保存`,'err');
+  return false;
+}
+async function dbAdd(store,obj){
+  try{
+    const d=await db();
+    // _skipBlob：只更新元数据（如缩略图、总结），不要把整个视频再写一遍
+    let rec=obj;
+    if(obj && obj._skipBlob){
+      rec=Object.assign({},obj);
+      delete rec._skipBlob;
+      delete rec.blob;
+    }
+    await new Promise((res,rej)=>{ const tx=d.transaction(store,'readwrite'); tx.objectStore(store).put(rec); tx.oncomplete=res; tx.onerror=()=>rej(tx.error); tx.onabort=()=>rej(tx.error||new Error('事务被中止')); });
+    return true;
+  }catch(e){ return dbFail(e,'写入'); }
+}
+async function dbAll(store){
+  try{
+    const d=await db();
+    return await new Promise((res,rej)=>{ const q=d.transaction(store).objectStore(store).getAll(); q.onsuccess=()=>res((q.result||[]).sort((a,b)=>b.date-a.date)); q.onerror=()=>rej(q.error); });
+  }catch(e){ dbFail(e,'读取'); return []; }
+}
+async function dbDel(store,id){
+  try{
+    const d=await db();
+    await new Promise((res,rej)=>{ const tx=d.transaction(store,'readwrite'); tx.objectStore(store).delete(id); tx.oncomplete=res; tx.onerror=()=>rej(tx.error); });
+    return true;
+  }catch(e){ return dbFail(e,'删除'); }
+}
+async function dbCount(store){ try{ const d=await db(); return await new Promise((res,rej)=>{ const q=d.transaction(store).objectStore(store).count(); q.onsuccess=()=>res(q.result||0); q.onerror=()=>rej(q.error); }); }catch(e){ return 0; } }
+
+const TESS_CDNS = [
+  '/core/tesseract.min.js',
+  'https://registry.npmmirror.com/tesseract.js/5.1.1/files/dist/tesseract.min.js',
+  'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js',
+  'https://unpkg.com/tesseract.js@5.1.1/dist/tesseract.min.js'
+];
+let tesseractReady = false, tesseractLoading = false;
+function loadTesseract(){
+  return new Promise(res=>{
+    if(window.Tesseract){ tesseractReady=true; updateOcrStatus(); return res(); }
+    if(tesseractLoading) return res();     // 已有一次加载在进行，避免并发重复注入 <script>
+    tesseractLoading = true;
+    let i=0;
+    let settled=false;
+    const finish=()=>{ if(!settled){ settled=true; tesseractLoading=false; updateOcrStatus(); res(); } };
+    const tryNext=()=>{
+      if(i>=TESS_CDNS.length) return finish();
+      const s=document.createElement('script');
+      s.src=TESS_CDNS[i];
+      s.onload=()=>{
+        if(window.Tesseract){
+          tesseractReady=true;
+          settled=true; tesseractLoading=false;
+          updateOcrStatus();
+          res();
+        } else if(++i<TESS_CDNS.length) setTimeout(tryNext, 300);
+        else finish();
+      };
+      s.onerror=()=>{ s.remove(); if(++i<TESS_CDNS.length) setTimeout(tryNext, 300); else finish(); };
+      // 单个来源挂起太久就换下一个（注意：这里只是推进下标，不结束整个加载流程）
+      setTimeout(()=>{ if(!settled && !window.Tesseract && i<TESS_CDNS.length){ s.remove(); i++; tryNext(); } }, 6000);
+      document.head.appendChild(s);
+    };
+    tryNext();
+    watchTesseract();
+  });
+}
+// 若脚本在兜底时间之后才加载完，仍然要把引擎标为可用，否则 OCR 会被永久禁用
+function watchTesseract(){
+  if(window.Tesseract){ tesseractReady=true; tesseractLoading=false; updateOcrStatus(); return; }
+  let n=0;
+  const t=setInterval(()=>{
+    if(window.Tesseract){ tesseractReady=true; tesseractLoading=false; updateOcrStatus(); clearInterval(t); }
+    else if(++n>60) clearInterval(t);
+  }, 1000);
+}
+function updateOcrStatus(){
+  const el=$('#set-ocr-status');
+  if(el) el.textContent = tesseractReady ? '已就绪（Tesseract.js 已加载）' : '未加载（请检查网络，OCR 功能不可用）';
+}
+let ocrWorker=null, ocrWorkerLang='', ocrWorkerQty='', ocrLogCb=null, ocrWorkerBusy=null;
+
+// workerPath/corePath 会传给 new Worker() 与 worker 内部 importScripts()，
+// 两者都要求"合法的最终 URL"。根相对路径(/core/...)在 importScripts 里不合法（WorkerGlobalScope 报 invalid）。
+// 因此用 location.origin 动态构造完整 URL。语言模型走 fetch，同源即可，用根相对路径。
+const ORIGIN = location.origin;
+const NLP_CDNS = [
+  ORIGIN + '/core/tesseract-core-simd-lstm.wasm.js',
+  'https://unpkg.com/tesseract.js-core@5.1.1/tesseract-core-simd-lstm.wasm.js'
+];
+const WORKER_CDNS = [
+  ORIGIN + '/core/worker.min.js',
+  'https://unpkg.com/tesseract.js@5.1.1/dist/worker.min.js'
+];
+// 语言模型本地位于运行目录的 tessdata/ 下（与图片同源）。同源 fetch 不触发 CORS。
+const LANG_PATH_MAP = {
+  std:  ORIGIN + '/tessdata',
+  best: ORIGIN + '/tessdata',
+  fast: ORIGIN + '/tessdata'
+};
+function qaLangPath(){ const p=LANG_PATH_MAP[S.ocrQuality]||LANG_PATH_MAP.std; return p||(ORIGIN + '/tessdata'); }
+
+/* 解析语言包来源：本机 tessdata 有就用本机（离线可用），
+ * 没有就指向该语言专属的 CDN 目录，由 Tesseract 自己下载。
+ * Tesseract 的 langPath 是针对"一批语言"的目录，而 CDN 上每个语种一个包名，
+ * 所以只能按语种分别给路径——这也是为什么不能共用 LANG_PATH_FALLBACK。
+ */
+async function resolveLangPath(langs){
+  const list = String(langs||'eng').split(/[+,]/).filter(Boolean);
+  const states = await Promise.all(list.map(l=>probeLangPack(l)));
+  const allLocal = states.every(s=>s === 'local');
+  if(allLocal) return { langPath: qaLangPath(), allLocal:true, langs: list };
+
+  // 有语言不在本机时必须走 CDN，而 CDN 上每种语言是独立目录
+  // （@tesseract.js-data/<lang>/<ver>/），一个 langPath 只能服务一种语言。
+  // 硬把 ["jpn","eng"] 交给它，它会去 jpn 目录下找 eng.traineddata.gz → 404。
+  // 所以这种情况下只认主语言，放弃叠加。
+  return { langPath: tessLangBase(list[0]), allLocal:false, langs: [list[0]] };
+}
+
+function resetOcrWorker(){
+  if(ocrWorker){ try{ ocrWorker.terminate(); }catch(e){} }
+  ocrWorker=null; ocrWorkerLang=''; ocrWorkerQty=''; ocrWorkerBusy=null;
+}
+/* 判断一个文字框是否其实落在"图片区域"上。
+ *
+ * 这是"翻译出现虚构内容"的根源：Tesseract 遇到头像、图标、照片、表情包这类
+ * 非文字内容时不会返回空，而是凭空造出几个字符（实测把纯色头像块读成"本"、
+ * 把两个色块读成"了属"）。这些幻觉字被当成正文送去翻译，就会翻出
+ * 完全不存在的内容。
+ *
+ * 判据：真实的文字区域有明确且占主导的背景色（文字浮在上面）；
+ * 图片区域颜色分布杂乱、没有哪个颜色能占到大半。
+ */
+function isImageLikeRegion(ctx, box, imgW, imgH){
+  const x0 = Math.max(0, Math.floor(box.x0));
+  const y0 = Math.max(0, Math.floor(box.y0));
+  const x1 = Math.min(imgW, Math.ceil(box.x1));
+  const y1 = Math.min(imgH, Math.ceil(box.y1));
+  const w = x1-x0, h = y1-y0;
+  if(w < 4 || h < 4) return false;
+  let data;
+  try{ data = ctx.getImageData(x0, y0, w, h).data; }
+  catch(e){ return false; }          // 读不到像素就保守放行，不误杀
+
+  // 颜色直方图：量化到 32 级（每通道 8 档），最多采样约 500 个点
+  const hist = new Map();
+  const step = Math.max(1, Math.floor(Math.sqrt((w*h)/500)));
+  let total = 0;
+  for(let y=0; y<h; y+=step){
+    for(let x=0; x<w; x+=step){
+      const p = (y*w+x)*4;
+      if(data[p+3] < 8) continue;
+      const k = ((data[p]>>5)<<6) | ((data[p+1]>>5)<<3) | (data[p+2]>>5);
+      hist.set(k, (hist.get(k)||0)+1);
+      total++;
+    }
+  }
+  if(total < 12) return false;
+  let maxCount = 0;
+  for(const v of hist.values()) if(v > maxCount) maxCount = v;
+  const dominant = maxCount / total;
+
+  // 真文字：背景色通常占到 55% 以上（白底黑字、深底浅字都是如此）
+  // 图片：主色占比低，且量化色种类多
+  if(dominant < 0.42) return true;
+  if(hist.size >= 10 && dominant < 0.62) return true;
+  return false;
+}
+
+/* 把各种"图片"统一成 canvas。
+ *
+ * 踩坑记录：历史记录里点"AI 识别 / 翻译"时，代码直接把 <img> 对象赋给了 aiCanvas，
+ * 而后续 OCR/翻译/打码全都调 srcCv.getContext(...)，于是抛出
+ *   "srcCv.getContext is not a function"
+ * 用户看到的就是"识别失败"。这跟图片内容、大小、复杂度完全无关。
+ * 在入口统一兜底：Image / HTMLImageElement / 位图对象一律转成 canvas。
+ */
+function toCanvas(src){
+  if(!src) throw new Error('没有可识别的图片');
+  if(typeof src.getContext === 'function') return src;          // 已经是 canvas
+  if(typeof src.naturalWidth === 'number' || src.tagName === 'IMG'){
+    const w = src.naturalWidth || src.width;
+    const h = src.naturalHeight || src.height;
+    if(!w || !h) throw new Error('图片尚未加载完成，请稍后重试');
+    const cv = document.createElement('canvas');
+    cv.width = w; cv.height = h;
+    cv.getContext('2d').drawImage(src, 0, 0);
+    return cv;
+  }
+  if(typeof src.width === 'number' && typeof src.height === 'number'){
+    const cv = document.createElement('canvas');
+    cv.width = src.width; cv.height = src.height;
+    cv.getContext('2d').drawImage(src, 0, 0);
+    return cv;
+  }
+  throw new Error('不支持的图片对象：' + Object.prototype.toString.call(src));
+}
+
+async function ocrOnCanvas(srcCv, {maxSide=S.ocrSide, needBlocks=false, cb}={}){
+  if(!tesseractReady) throw new Error('OCR 引擎未加载，请检查网络后在设置中重试');
+  srcCv = toCanvas(srcCv);
+  ocrLogCb = cb||null;
+  const scale = Math.min(1, (maxSide||2000)/Math.max(srcCv.width, srcCv.height));
+  let workCv = srcCv;
+  if(scale<1){ workCv=document.createElement('canvas'); workCv.width=Math.round(srcCv.width*scale); workCv.height=Math.round(srcCv.height*scale); workCv.getContext('2d').drawImage(srcCv,0,0,workCv.width,workCv.height); }
+  const worker = await getWorker();
+  // 总是要 blocks：行级结构是过滤"图片区域幻觉文字"的必要信息
+  const {data} = await worker.recognize(workCv, {}, {text:true, blocks:true});
+  const words=[], lines=[];
+  if(data.blocks){ for(const b of data.blocks||[]){ for(const p of (b.paragraphs||[])){ for(const l of (p.lines||[])){
+    const lw=[];
+    for(const w of (l.words||[])){ if(w&&w.text&&w.bbox){ const o={text:w.text, bbox:w.bbox, conf:w.confidence||0}; words.push(o); lw.push(o); } }
+    // 行级置信度：图片/照片/图标这些非文字区域，Tesseract 会"凭空造"出字符，
+    // 置信度是区分"真文字"和"图形噪声"最可靠的判据，这里一并带出去供上层过滤
+    if(lw.length) lines.push({ text:l.text||lw.map(w=>w.text).join(' '), conf: lw.reduce((a,w)=>a+w.conf,0)/lw.length, bbox: l.bbox });
+  }}}}
+  const fx = srcCv.width/workCv.width, fy = srcCv.height/workCv.height;
+  words.forEach(w=>{ w.bbox.x0*=fx; w.bbox.x1*=fx; w.bbox.y0*=fy; w.bbox.y1*=fy; });
+  lines.forEach(l=>{ if(l.bbox){ l.bbox.x0*=fx; l.bbox.x1*=fx; l.bbox.y0*=fy; l.bbox.y1*=fy; } });
+  ocrLogCb=null;
+
+  // 返回给界面的文本必须清洗：跳过低置信度行、图片区域幻觉行，
+  // 并剥掉 "7|" 这类界面装饰前缀。否则"识别结果"面板里会原样显示噪声。
+  //
+  // 注意：图片区域判据只对"短文本"生效。幻觉文字总是很短（"本"、"了属"），
+  // 而正常正文即使落在复杂背景上也必须保留——按区域一刀切会把正文也删掉。
+  const ctx = srcCv.getContext('2d');
+  const kept = [];
+  for(const l of lines){
+    if(!l.bbox) continue;
+    if((l.conf||0) < OCR_MIN_CONF) continue;
+    const core = String(l.text||'').replace(/[\s\p{P}\p{S}]+/gu,'');
+    if(core.length <= 4 && isImageLikeRegion(ctx, l.bbox, srcCv.width, srcCv.height)) continue;
+    const t = cleanOcrText(l.text);
+    if(t && isTranslatableText(t)) kept.push(t);
+  }
+  const text = kept.length ? kept.join('\n') : cleanOcrOutput(data.text||'').join('\n');
+
+  return {text, words, lines};
+}
+
+/* ============ 截图翻译 ============
+ * 参考开源实现：
+ *   eSearch(xushengfeng) / TTime(InkTimeRecord)  —— 截图后原地翻译的工作流
+ *   manga-image-translator(zyddnys) / comic-translate(ogkalu2)
+ *     —— 文本框合并、底色采样遮盖原文、按框宽高自适应字号回填
+ * 本实现复用项目已有的 Tesseract 离线 OCR，只把"文字"送去翻译，图片永不上传。
+ */
+
+// 大众语言表。tess = Tesseract 语言代码（逗号分隔表示叠加识别），
+// gt = Google 免费翻译接口代码，llm = 给大模型看的语言名。
+const LANGS = [
+  { code:'zh-CN', name:'简体中文',   flag:'🇨🇳', tess:'chi_sim',            gt:'zh-CN', llm:'简体中文',   pack:true  },
+  { code:'zh-TW', name:'繁体中文',   flag:'🇹🇼', tess:'chi_tra',            gt:'zh-TW', llm:'繁体中文',   pack:true  },
+  { code:'en',    name:'英语',       flag:'🇺🇸', tess:'eng',                gt:'en',    llm:'英语',       pack:true  },
+  { code:'ja',    name:'日语',       flag:'🇯🇵', tess:'jpn',                gt:'ja',    llm:'日语',       pack:true  },
+  { code:'ko',    name:'韩语',       flag:'🇰🇷', tess:'kor',                gt:'ko',    llm:'韩语',       pack:true  },
+  { code:'fr',    name:'法语',       flag:'🇫🇷', tess:'fra',                gt:'fr',    llm:'法语',       pack:true  },
+  { code:'de',    name:'德语',       flag:'🇩🇪', tess:'deu',                gt:'de',    llm:'德语',       pack:true  },
+  { code:'es',    name:'西班牙语',   flag:'🇪🇸', tess:'spa',                gt:'es',    llm:'西班牙语',   pack:true  },
+  { code:'ru',    name:'俄语',       flag:'🇷🇺', tess:'rus',                gt:'ru',    llm:'俄语',       pack:true  },
+  { code:'pt',    name:'葡萄牙语',   flag:'🇵🇹', tess:'por',                gt:'pt',    llm:'葡萄牙语',   pack:true  },
+  { code:'it',    name:'意大利语',   flag:'🇮🇹', tess:'ita',                gt:'it',    llm:'意大利语',   pack:true  },
+  { code:'ar',    name:'阿拉伯语',   flag:'🇸🇦', tess:'ara',                gt:'ar',    llm:'阿拉伯语',   pack:true  },
+  { code:'hi',    name:'印地语',     flag:'🇮🇳', tess:'hin',                gt:'hi',    llm:'印地语',     pack:false },
+  { code:'th',    name:'泰语',       flag:'🇹🇭', tess:'tha',                gt:'th',    llm:'泰语',       pack:false },
+  { code:'vi',    name:'越南语',     flag:'🇻🇳', tess:'vie',                gt:'vi',    llm:'越南语',     pack:false },
+  { code:'id',    name:'印尼语',     flag:'🇮🇩', tess:'ind',                gt:'id',    llm:'印尼语',     pack:false },
+  { code:'ms',    name:'马来语',     flag:'🇲🇾', tess:'msa',                gt:'ms',    llm:'马来语',     pack:false },
+  { code:'tr',    name:'土耳其语',   flag:'🇹🇷', tess:'tur',                gt:'tr',    llm:'土耳其语',   pack:false },
+  { code:'pl',    name:'波兰语',     flag:'🇵🇱', tess:'pol',                gt:'pl',    llm:'波兰语',     pack:false },
+  { code:'nl',    name:'荷兰语',     flag:'🇳🇱', tess:'nld',                gt:'nl',    llm:'荷兰语',     pack:false },
+  { code:'sv',    name:'瑞典语',     flag:'🇸🇪', tess:'swe',                gt:'sv',    llm:'瑞典语',     pack:false },
+  { code:'uk',    name:'乌克兰语',   flag:'🇺🇦', tess:'ukr',                gt:'uk',    llm:'乌克兰语',   pack:false },
+  { code:'he',    name:'希伯来语',   flag:'🇮🇱', tess:'heb',                gt:'iw',    llm:'希伯来语',   pack:false },
+  { code:'el',    name:'希腊语',     flag:'🇬🇷', tess:'ell',                gt:'el',    llm:'希腊语',     pack:false }
+];
+const LANG_MAP = Object.fromEntries(LANGS.map(l=>[l.code,l]));
+function langOf(code){ return LANG_MAP[code] || LANG_MAP.en; }
+
+/* 中文/日文/韩文截图里几乎一定混着英文（按钮、App 名、专有名词、单位）。
+ * 只挂纯 CJK 语言包时，Tesseract 会把这类英文词读成乱码或直接丢弃，
+ * 送进翻译接口的就是错的原文——译文自然也错。
+ * 所以 CJK 语种统一再叠加 eng，与设置里默认的「chi_sim+eng」保持一致。
+ */
+const CJK_TESS = { chi_sim:1, chi_tra:1, jpn:1, kor:1 };
+function tessForOcr(code){
+  const parts = String(langOf(code).tess||'eng').split('+').filter(Boolean);
+  if(parts.some(p=>CJK_TESS[p]) && !parts.includes('eng')) parts.push('eng');
+  return parts.join('+');
+}
+
+/* 按识别出来的原文，判断它属于哪一个可选语言。
+ * 只做"脚本级"判断（汉字/假名/谚文/西里尔…），可靠且不联网；
+ * 纯拉丁字母无法区分英法德西，返回 'auto' 交给翻译接口自己判定，
+ * 而不是像以前那样一律当成英语——那正是译文原样返回的根源。
+ */
+function detectLangCode(text){
+  const t = String(text||'');
+  const has = re => re.test(t);
+  if(has(/[\u3040-\u30ff]/)) return 'ja';                 // 假名是日语独有特征
+  if(has(/[\uac00-\ud7af]/)) return 'ko';
+  // 汉字必须占主体才算中文：截图里偶尔混一两个汉字（品牌名、字幕），
+  // 若据此判成中文，就会被下面的"原文已是目标语言"拦下来，英文正文反而翻不了。
+  const cjk = (t.match(/[\u4e00-\u9fff]/g)||[]).length;
+  const lat = (t.match(/[A-Za-z]/g)||[]).length;
+  if(cjk > 0 && cjk >= lat) return 'zh-CN';
+  if(has(/[\u0400-\u04ff]/)) return 'ru';
+  if(has(/[\u0600-\u06ff]/)) return 'ar';
+  if(has(/[\u0e00-\u0e7f]/)) return 'th';
+  if(has(/[\u0590-\u05ff]/)) return 'he';
+  if(has(/[\u0370-\u03ff]/)) return 'el';
+  if(has(/[\u0900-\u097f]/)) return 'hi';
+  return 'auto';
+}
+
+// 本地已随程序附带的语言包（tessdata 目录下真实存在的两个），其余走 CDN 按需加载
+const LOCAL_TESS = { chi_sim:1, eng:1 };
+/* 语言包下载源。
+ * 实测只有 4.0.0_best_int 在全部语种上都存在且体积合理（1–3 MB）；
+ * 4.0.0_fast 在 jsdelivr 上全语种 404，4.0.0 完整包动辄 6–26 MB（中日繁体尤甚），
+ * 首次使用会让用户干等，所以统一用 best_int 作为按需下载源。
+ */
+function tessLangBase(lang){
+  return `https://cdn.jsdelivr.net/npm/@tesseract.js-data/${lang}/4.0.0_best_int`;
+}
+
+const TR_ENGINES = { free:'free', llm:'llm' };
+
+/* ---- 免费翻译接口（无需 API Key）----
+ * 主用 Google 的 gtx 端点（长文本、分句质量好），失败时退回 MyMemory。
+ * 与 eSearch / TTime 的选择一致：普通用户零配置即可用。
+ * sl 允许传 'auto'：交给接口自己判定源语言，比本地猜语种准得多。
+ */
+const GT_ENDPOINT = 'https://translate.googleapis.com/translate_a/single';
+async function gtTranslate(text, from, to, signal, onDetect){
+  const qs = new URLSearchParams({ client:'gtx', sl:from||'auto', tl:to, dt:'t', q:text });
+  // 用 POST 而不是把整段文字塞进 URL：段落长时 GET 会超出 URL 长度上限而被截断/报 414。
+  const res = await fetch(GT_ENDPOINT, {
+    method:'POST',
+    headers:{ 'Content-Type':'application/x-www-form-urlencoded;charset=utf-8' },
+    body: qs.toString(),
+    signal
+  });
+  if(!res.ok) throw new Error('HTTP '+res.status);
+  const j = await res.json();
+  if(!Array.isArray(j) || !Array.isArray(j[0])) throw new Error('返回格式异常');
+  // j[2] 是接口判定出的源语言，自动检测模式下用它回填，比本地脚本判断更准
+  if(onDetect && typeof j[2] === 'string' && j[2]) onDetect(j[2]);
+  return j[0].map(seg=>seg&&seg[0]?seg[0]:'').join('').trim();
+}
+
+async function gtTranslateOne(text, from, to, signal, onDetect){
+  const r = await gtTranslate(text, from, to, signal, onDetect);
+  if(!r || looksLikeEngineError(r)) throw new Error('空译文');
+  return r;
+}
+/* 一次请求翻多条：把多条文本用换行拼成一个 q 发出去。
+ * 实测 Google 会按行返回——原文拼接可精确还原输入，译文行数与输入行数完全一致。
+ * 截图里动辄几十个段落，逐条请求就是"翻译慢"的主因，这里把往返次数压到 1~2 次。
+ * 注意：不能用多 q 参数（q=a&q=b），实测只翻第一条，其余会被静默忽略。
+ */
+async function gtTranslateBatch(texts, from, to, signal, onDetect){
+  const lines = texts.map(t=>String(t||'').replace(/\s*\n+\s*/g,' ').trim());
+  const qs = new URLSearchParams({ client:'gtx', sl:from||'auto', tl:to, dt:'t', q:lines.join('\n') });
+  const res = await fetch(GT_ENDPOINT, {
+    method:'POST',
+    headers:{ 'Content-Type':'application/x-www-form-urlencoded;charset=utf-8' },
+    body: qs.toString(),
+    signal
+  });
+  if(!res.ok) throw new Error('HTTP '+res.status);
+  const j = await res.json();
+  if(!Array.isArray(j) || !Array.isArray(j[0])) throw new Error('返回格式异常');
+  if(onDetect && typeof j[2] === 'string' && j[2]) onDetect(j[2]);
+  const parts = j[0].map(seg=>seg&&seg[0]?seg[0]:'').join('').split('\n').map(s=>s.trim());
+  // 行数对不上就绝不能按行取用，否则整批译文会整体错位；交给上层退回逐条翻译
+  if(parts.length !== lines.length) throw new Error('批量返回行数不一致');
+  if(parts.some((p,i)=> lines[i] && (!p || looksLikeEngineError(p)))) throw new Error('批量译文异常');
+  return parts;
+}
+
+/* 免费接口在超额/报错时不会返回 HTTP 错误，而是把提示语当作"译文"塞回来，
+ * 例如 "MYMEMORY WARNING: YOU USED ALL AVAILABLE FREE TRANSLATIONS FOR TODAY"、
+ * "QUERY LENGTH LIMIT EXCEEDED"。必须挡掉，否则用户界面上会出现一条英文告警。
+ */
+function looksLikeEngineError(s){
+  const t = String(s||'').trim();
+  if(!t) return true;
+  return /^(MYMEMORY|QUERY LENGTH LIMIT|PLEASE SELECT TWO DISTINCT|INVALID (SOURCE|TARGET|LANG)|TOO MANY REQUESTS|YOU USED ALL AVAILABLE|NO QUERY SPECIFIED)/i.test(t);
+}
+/* MyMemory 单词请求上限 500 字节，超了会直接报 QUERY LENGTH LIMIT；
+ * 这里按句读点把长文切成 ≤max 的片段分次翻译再拼回。 */
+function splitLongText(t, max){
+  const out = [];
+  let rest = String(t||'');
+  while(rest.length > max){
+    let cut = -1;
+    for(const p of ['。','！','？','；','!','?',';','.','，',',','、',' ']){
+      const i = rest.lastIndexOf(p, max);
+      if(i > cut) cut = i;
+    }
+    cut = cut < max*0.4 ? max : cut+1;
+    out.push(rest.slice(0, cut));
+    rest = rest.slice(cut);
+  }
+  if(rest) out.push(rest);
+  return out;
+}
+const MM_MAX = 450;
+async function myMemoryTranslate(text, from, to, signal){
+  const q = String(text||'');
+  if(q.length > MM_MAX){
+    const segs = splitLongText(q, MM_MAX);
+    const parts = [];
+    for(const s of segs) parts.push(await myMemoryTranslate(s, from, to, signal));
+    return parts.join('');
+  }
+  const qs = new URLSearchParams({ q, langpair:`${from}|${to}` });
+  const res = await fetch(`https://api.mymemory.translated.net/get?${qs}`, { signal });
+  if(!res.ok) throw new Error('HTTP '+res.status);
+  const j = await res.json();
+  // responseStatus 才是真实结果：限流/超额时是 429/403，translatedText 里塞的是告警原文
+  const st = j && j.responseStatus;
+  if(st && Number(st) !== 200) throw new Error(String((j && j.responseDetails) || ('MyMemory '+st)));
+  const out = j && j.responseData && j.responseData.translatedText;
+  if(!out) throw new Error('无译文');
+  const s = String(out).trim();
+  if(looksLikeEngineError(s)) throw new Error(s.slice(0,80));
+  return s;
+}
+
+/* ---- LLM 翻译：复用设置里已配置的 OpenAI 兼容接口 ----
+ * 用 JSON 数组批量回传，保证"第 N 条译文"与"第 N 个文本框"严格对应，
+ * 否则回填到图片上的文字会串位。
+ */
+function buildLlmTranslatePrompt(items, fromName, toName){
+  const auto = fromName === 'auto';
+  return `你是专业的截图文字翻译引擎。请把下面的文本逐条翻译成${toName}。
+要求：
+1. ${auto ? '先自行判断每条的原文语言，再翻译成' + toName : '原文语言为' + fromName + '，翻译成' + toName}；只输出译文，不要解释、不要音译、不要保留原文；
+2. 保留原文的语气与专业术语，界面按钮类短语要简短（适合放进小方框）；
+3. 必须严格输出 JSON 数组，条数与输入完全一致，顺序不可变，形如 ["译文1","译文2"]；
+4. 某条无有效内容时，对应位置输出空字符串 ""，不要增删条目。
+
+输入：
+${JSON.stringify(items)}`;
+}
+function extractJsonArray(s){
+  if(!s) return null;
+  const cleaned = String(s).replace(/```(?:json)?/gi,'').trim();
+  const a = cleaned.indexOf('['), b = cleaned.lastIndexOf(']');
+  if(a<0 || b<=a) return null;
+  try{ const v = JSON.parse(cleaned.slice(a, b+1)); return Array.isArray(v)?v:null; }catch(e){ return null; }
+}
+async function llmTranslateBatch(items, fromName, toName){
+  const raw = await llmChat(buildLlmTranslatePrompt(items, fromName, toName));
+  const arr = extractJsonArray(raw);
+  if(arr && arr.length === items.length) return arr.map(x=>String(x==null?'':x).trim());
+  // 条数对不上就逐条重试，宁可慢也不能串位
+  const srcDesc = fromName === 'auto' ? '原文' : fromName;
+  const out = [];
+  for(const t of items){
+    try{
+      const one = await llmChat(`把下面这段${srcDesc}翻译成${toName}，只输出译文本身，不要任何解释或引号：\n${t}`);
+      out.push(String(one||'').replace(/^["'「『]|["'」』]$/g,'').trim());
+    }catch(e){ out.push(''); }
+  }
+  return out;
+}
+
+/* ---- 统一翻译入口 ---- */
+const TR_CACHE = new Map();          // 相同文本+语向直接命中，避免重复请求
+function trCacheKey(text, from, to, engine){ return `${engine}|${from}|${to}|${text}`; }
+
+async function translateTexts(texts, { from, to, engine, onStep, onDetect, signal }={}){
+  const toLang = langOf(to);
+  // 源语言为「自动检测」时，直接让翻译接口自己判定（Google 的语种识别比本地脚本猜测可靠），
+  // 旧实现走 langOf('auto') 落到英语，导致中文截图被当成英文、译文原样返回。
+  const isAuto = !from || from === 'auto';
+  const fromLang = isAuto
+    ? { code:'auto', gt:'auto', llm:'原文语言' }
+    : (toLang.code === from ? (()=>{ throw new Error('原文语言与目标语言相同，请重新选择'); })() : langOf(from));
+  const out = new Array(texts.length).fill('');
+  const useEngine = engine || S.trEngine || TR_ENGINES.free;
+  const todo = [];
+  texts.forEach((t,i)=>{
+    const key = trCacheKey(t, fromLang.code, toLang.code, useEngine);
+    if(TR_CACHE.has(key)) out[i] = TR_CACHE.get(key);
+    else if(t && t.trim()) todo.push(i);
+  });
+  if(!todo.length) return out;
+  const total = todo.length;
+
+  if(useEngine === TR_ENGINES.llm){
+    if(!S.llmEnabled || !S.llmKey || !S.llmBase) throw new Error('LLM 翻译需要先在「设置」中启用并填写 API 地址与 Key');
+    const CHUNK = 20;
+    let done = 0;
+    for(let i=0;i<todo.length;i+=CHUNK){
+      const idxs = todo.slice(i, i+CHUNK);
+      const part = await llmTranslateBatch(idxs.map(k=>texts[k]), isAuto ? 'auto' : fromLang.llm, toLang.llm);
+      idxs.forEach((k,j)=>{ out[k] = part[j]||''; });
+      done += idxs.length;
+      if(onStep) onStep(done, total);
+    }
+  }else{
+    // 免费接口：核心是"少往返"。把待翻条目打包成几批，每批一次请求带上多条文本。
+    // 截图的段落通常 10~40 条，打包后一般只要 1~2 次请求；旧实现是每条一次请求，
+    // 每次都要经过代理，几十次往返叠起来就是用户感知到的"翻译很慢"。
+    const batches = [];
+    let cur = [], curLen = 0;
+    for(const k of todo){
+      const len = String(texts[k]).length;
+      if(cur.length && (cur.length >= 40 || curLen + len > 2500)){ batches.push(cur); cur = []; curLen = 0; }
+      cur.push(k); curLen += len + 1;   // 换行也算一个字符
+    }
+    if(cur.length) batches.push(cur);
+
+    let cursor = 0, done = 0, failed = 0, success = 0, lastErr = null;
+    // 整批失败（含行数错位）时退回逐条，绝不按错误的行号往格子里塞译文
+    const oneByOne = async (idxs)=>{
+      for(let i=0;i<idxs.length;i++){
+        const k = idxs[i], t = texts[k];
+        let got = '';
+        try{ got = await gtTranslateOne(t, fromLang.gt, toLang.gt, signal, onDetect); }
+        catch(e){
+          if(e && e.name === 'AbortError') throw e;
+          lastErr = e;
+          // 按已知语种翻不出来时，让接口重新判定源语言再试一次
+          if(fromLang.gt !== 'auto'){
+            try{ got = await gtTranslateOne(t, 'auto', toLang.gt, signal, onDetect); }
+            catch(e2){ if(e2 && e2.name === 'AbortError') throw e2; lastErr = e2; }
+          }
+        }
+        if(!got && fromLang.gt !== 'auto'){
+          try{ got = await myMemoryTranslate(t, fromLang.gt, toLang.gt, signal); }catch(e3){ lastErr = e3; }
+        }
+        out[k] = got;
+        if(got) success++; else failed++;
+        done++;
+        if(onStep) onStep(done, total, failed);
+        // 前几条全军覆没说明接口/网络不可用，别再把剩下几十条各试三遍，那会更慢
+        if(!success && failed >= 3){
+          const rest = idxs.slice(i+1);
+          failed += rest.filter(k2=>!out[k2]).length;
+          done += rest.length;
+          if(onStep) onStep(done, total, failed);
+          return;
+        }
+      }
+    };
+    const worker = async ()=>{
+      while(cursor < batches.length){
+        const idxs = batches[cursor++];
+        let ok = false;
+        try{
+          const parts = await gtTranslateBatch(idxs.map(k=>texts[k]), fromLang.gt, toLang.gt, signal, onDetect);
+          idxs.forEach((k,j)=>{ out[k] = parts[j]||''; if(parts[j]) success++; else failed++; });
+          done += idxs.length;
+          if(onStep) onStep(done, total, failed);
+          ok = true;
+        }catch(e){
+          if(e && e.name === 'AbortError') throw e;
+          lastErr = e;
+        }
+        if(!ok) await oneByOne(idxs);
+      }
+    };
+    await Promise.all(Array.from({length:Math.min(3, batches.length)}, worker));
+    // 一条都没成功，多半是网络或接口不可用：抛出真实原因，别让用户对着空白猜
+    if(failed === total) throw new Error('翻译服务不可用（' + (lastErr && lastErr.message || '网络错误') + '），可在设置中改用大模型翻译');
+    if(failed > 0) toast(`${failed}/${total} 条未能翻译，可稍后重试或改用大模型翻译`, 'err');
+  }
+
+  // 译文质检：接口偶尔会把原文原样吐回来（专有名词、或源语言被判定错时），用户看到的就是"没翻译"。
+  // 让接口重新判定源语言再试一次。这里同样走批量 + 并行，避免质检环节再拖慢一次。
+  const unchanged = [];
+  texts.forEach((t,i)=>{
+    const src = String(t||'').trim();
+    const dst = String(out[i]||'').trim();
+    if(src && dst && src === dst && isTranslatableText(src)) unchanged.push(i);
+  });
+  if(fromLang.gt !== 'auto' && unchanged.length){
+    try{
+      const parts = await gtTranslateBatch(unchanged.map(i=>texts[i]), 'auto', toLang.gt, signal, onDetect);
+      unchanged.forEach((i,j)=>{
+        const alt = parts[j] && parts[j].trim();
+        if(alt && alt !== String(texts[i]).trim()) out[i] = alt;
+      });
+    }catch(e){
+      if(e && e.name === 'AbortError') throw e;
+      // 批量重试不成，再并行逐条试，别让一条坏数据拖垮其余条目
+      await Promise.all(unchanged.map(async i=>{
+        try{
+          const alt = await gtTranslateOne(texts[i], 'auto', toLang.gt, signal, onDetect);
+          if(alt && alt.trim() !== String(texts[i]).trim()) out[i] = alt.trim();
+        }catch(e2){ /* 重试不成保留原值，由调用方提示 */ }
+      }));
+    }
+  }
+  // 重试后仍是原文的，统计出来交给调用方提示用户
+  const stillSame = [];
+  texts.forEach((t,i)=>{
+    const src = String(t||'').trim();
+    const dst = String(out[i]||'').trim();
+    if(src && dst && src === dst) stillSame.push(i);
+  });
+
+  texts.forEach((t,i)=>{
+    if(out[i]) TR_CACHE.set(trCacheKey(t, fromLang.code, toLang.code, useEngine), out[i]);
+  });
+  // 仍与原文一致的数量，通过 onStep 的第四个参数回传，由调用方提示用户
+  if(stillSame.length && onStep) onStep(total, total, 0, stillSame.length);
+  return out;
+}
+
+/* ---- 文本框合并 ----
+ * OCR 给的是单词框，直接整句翻译需要先把属于同一行的词拼起来，
+ * 否则译文会碎成一地单词。这里按"纵向重叠 + 横向靠近"归并成行。
+ */
+function mergeWordBoxes(words, imgW){
+  // 记录每个词在 OCR 输出里的原始位置。
+  // 关键：行内拼接必须按"OCR 给出的阅读顺序"，不能按 bbox 的 x0 重排。
+  // 中文里相邻字的框常有轻微重叠/错位（"个"的 x0 可能落在"亭子"右边），
+  // 按 x0 排序就会把"这个亭子"排成"这亭子个"。
+  const items = (words||[]).map((w,i)=>({ w, i })).filter(({w})=>{
+    if(!w || !w.bbox || !w.text || !w.text.trim()) return false;
+    const c = (w.conf == null) ? 100 : w.conf;
+    if(c >= 25) return true;
+    return /[\u4e00-\u9fff\u3040-\u30ff\u3400-\u4dbf\uac00-\ud7af]/.test(w.text);
+  }).map(({w,i})=>({ ...w, _seq: i }));
+  if(!items.length) return [];
+  const sorted = items.slice().sort((a,b)=> (a.bbox.y0-b.bbox.y0) || (a.bbox.x0-b.bbox.x0));
+  const lines = [];
+  const hOf = b => Math.max(1, b.y1-b.y0);
+  for(const w of sorted){
+    const b = w.bbox, h = hOf(b), cy = (b.y0+b.y1)/2;
+    let target = null;
+    for(const ln of lines){
+      // 行归并判据：以本行首个词的"中线 cy0 / 高度 h0"为基准，
+      // 不用会不断扩张的 ln.box。
+      // 旧实现拿动态 box 去比重叠率，一行里先混进一个高框（带标点/竖笔画的词），
+      // box 越撑越大，最后把上下两行并成一条——这就是
+      // "朱子翔"被拆开、和下一句拼成"朱子可翔惜"的根源。
+      //
+      // 注意：不能对"字号"卡太死。Tesseract 返回的 bbox 高度本身就不稳
+      // （同一个 19px 的汉字，有的框 18px、有的框 32px，取决于有没有上下延伸笔画），
+      // 严格按高度比筛会把正常的一行拆成两半。所以主判据是中线的接近程度。
+      const cy0 = ln.cy0, h0 = ln.h0;
+      const tol = 0.45 * Math.max(h, h0);
+      if(Math.abs(cy - cy0) > tol) continue;
+      target = ln; break;
+    }
+    if(target){
+      target.words.push(w);
+      target.box = {
+        x0:Math.min(target.box.x0,b.x0), y0:Math.min(target.box.y0,b.y0),
+        x1:Math.max(target.box.x1,b.x1), y1:Math.max(target.box.y1,b.y1)
+      };
+    }else{
+      lines.push({
+        box:{x0:b.x0,y0:b.y0,x1:b.x1,y1:b.y1},
+        words:[w],
+        cy0: cy,          // 行基准中线
+        h0: h             // 行基准高度
+      });
+    }
+  }
+  for(const ln of lines){
+    // 按 OCR 原始顺序排（_seq），不做 x 坐标重排——理由见上面 items 的注释
+    ln.words.sort((a,b)=> (a._seq??0) - (b._seq??0));
+    // 行内用空格拼接；中文/日文之间不加空格，否则会撑宽文本框
+    let text = '';
+    ln.words.forEach((w,i)=>{
+      const t = w.text.trim();
+      if(i>0){
+        const prev = ln.words[i-1].text.trim();
+        const gap = w.bbox.x0 - ln.words[i-1].bbox.x1;
+        const cjk = /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]$/.test(prev);
+        if(!cjk && gap > 0.28*hOf(ln.box)) text += ' ';
+      }
+      text += t;
+    });
+    ln.text = cleanOcrText(text);
+    ln.conf = ln.words.length ? ln.words.reduce((a,w)=>a+(w.conf||0),0)/ln.words.length : 0;
+  }
+  const out = lines.filter(l=>l.text && isTranslatableText(l.text));
+  // 置信度太低的整行多半来自图片/图标区域，翻出来只会是乱码，直接丢掉
+  return out.filter(l=> l.conf >= OCR_MIN_CONF && l.box.x1-l.box.x0 > 2 && l.box.y1-l.box.y0 > 2 && (imgW? l.box.x0 < imgW*0.999 : true));
+}
+
+/* ---- OCR 文本清洗 ----
+ * 实测"译文乱码 / 翻得不对"的根源不在翻译引擎，而在送上来的原文本身就是噪声：
+ *   "總理已已授权"（重字）、"EditE"（尾巴多字符）、"IIl1O0"（纯噪声）
+ * 翻译接口会把这些原样硬翻，用户看到的就是乱码。
+ * 所以送翻之前先清洗：去重字、修常见误识、挡掉纯噪声串。
+ */
+function cleanOcrText(s){
+  let t = String(s||'').replace(/\s+/g,' ').trim();
+  if(!t) return '';
+
+  // 1) 叠字：OCR 把同一字符重复识别两次（"已已" "理理" "the the"）
+  t = t.replace(/([\u4e00-\u9fff])\1+/g, '$1');
+  t = t.replace(/\b([A-Za-z]{2,})\s+\1\b/gi, '$1');
+
+  // 2) 数字/字母混淆还原。
+  //    不能简单把 1→l、0→o：Settings 里的 1 其实该还原成 i。
+  //    所以只还原"有明确答案"的高频词，其余交给下面的噪声过滤挡掉，
+  //    宁可不修也不要修错（修错会把好端端的词变成另一个怪词）。
+  const wordFixes = {
+    'sett1ngs':'settings','sett1ng':'setting','f1le':'file','f1les':'files',
+    'ed1t':'edit','cl1ck':'click','l0gin':'login','l0g1n':'login',
+    's1gn':'sign','s1ze':'size','t1me':'time','t1tle':'title',
+    '0ption':'option','0ptions':'options','0pen':'open','0n':'on','0ff':'off',
+    'c0nfig':'config','c0lor':'color','err0r':'error','user0':'user'
+  };
+  t = t.replace(/[A-Za-z0-9]+/g, (w)=>{
+    const key = w.toLowerCase();
+    if(wordFixes[key]){
+      const fixed = wordFixes[key];
+      // 保留原词的首字母大小写风格
+      return /^[A-Z]/.test(w) ? fixed[0].toUpperCase()+fixed.slice(1) : fixed;
+    }
+    return w;
+  });
+  // 剩下"字母中间夹数字"的词（如 x1y2、IIl1O0）不修，留给噪声过滤拦掉
+
+  // 3) 去掉行首的"数字+符号"装饰噪声。
+  //    聊天/社交类界面里，头像框、序号条、滚动条、时间戳装饰经常被 OCR 读成
+  //    "7|"、"2¥"、"3｜" 这种前缀，粘在正文前面（实测 "7|朱子翔"）。
+  //    这类前缀对翻译毫无意义，还会污染译文，直接剥掉。
+  t = t.replace(/^\s*\d{1,3}\s*[|｜丨¥￥$€£¢~·•—–]\s*/g, '');
+  // 行尾同类装饰也清掉（如 "朱子翔|"）
+  t = t.replace(/\s*[|｜丨]\s*\d{1,3}\s*$/g, '');
+  // 纯符号包裹的短串（"丨本"、"¥"）多半是图标，剥完再看内容
+
+  // 4) 去掉首尾的装饰性杂符。
+  //    反相/放大识别时特别容易在两端粘上 "|" "\" "_" 这类笔画残影
+  //    （实测蓝底白字会读成 "Savechanges|"），这些符号对翻译毫无意义，
+  //    留着还会干扰分词。只清理这些"不该出现在文字边缘"的符号，
+  //    正常标点（.,!?;:）不动。
+  t = t.replace(/^[\s|\\/_~^`<>{}[\]*#=+\u2500-\u257f]+/g, '');
+  t = t.replace(/[\s|\\/_~^`<>{}[\]*#=+\u2500-\u257f]+$/g, '');
+
+  // 去掉两端无意义的孤字符（OCR 常在词尾粘一个随机字母，如 "EditE"）
+  // 仅当末尾那个字符是单独的大写字母、且前面是完整单词时才剔除
+  t = t.replace(/\b([A-Za-z]{3,})([A-Z])$/,'$1');
+  // 中文串尾部的重复单字再兜一次（上面的 \1+ 处理不了跨标点的情况）
+  t = t.replace(/([\u4e00-\u9fff])([，。、；：])\1/g, '$1$2');
+
+  // 5) 去掉两端孤立的引号/括号。
+  //    Tesseract 逐字识别中文时，常把头像边缘、图标轮廓读成引号或括号，
+  //    粘在句首/句尾（实测句首多出一个 "”"）。它们对翻译无意义。
+  t = t.replace(/^[\s"'“”‘’「」『』《》〈〉()（）\[\]【】{}]+/, '');
+  t = t.replace(/[\s"'“”‘’「」『』《》〈〉()（）\[\]【】{}]+$/, '');
+
+  // 6) 中文之间不留空格。
+  //    Tesseract 对中文常常逐字返回（"再 来 几 针"），拼起来后满屏空格，
+  //    既影响观感，也会让翻译引擎按词切分、译得生硬。
+  //    只处理"汉字/假名/谚文之间"的空格，中英文之间的空格保留。
+  const CJK = '\\u3040-\\u30ff\\u3400-\\u4dbf\\u4e00-\\u9fff\\uac00-\\ud7af';
+  t = t.replace(new RegExp('([' + CJK + '])\\s+(?=[' + CJK + '])', 'g'), '$1');
+
+  return t.replace(/\s+/g,' ').trim();
+}
+
+/* 图片/照片/图标/示意图这类非文字区域，Tesseract 并不会"什么都不认"，
+ * 而是会凭空造出几个字符（"e"、"IIl"、"cD"…）。这是"识别出一段乱码、
+ * 而那块内容其实是图片"的直接原因。
+ * 置信度是最可靠的判据：能读出来的真文字一般在 70 以上，图形噪声多在 50 以下。
+ */
+const OCR_MIN_CONF = 45;
+// 补救通道（反相 + 拉对比度）的门槛要高得多：照片、图标、示意图在反相增强之后
+// 极容易被"造"出字符，甚至置信度还不低。这条通道本身就在识别结果最少时触发
+// （也就是内容多半真的是张图），所以宁可少补，也不能把图形噪声补进来。
+const OCR_RETRY_MIN_CONF = 60;
+// 行级过滤：置信度太低、清洗后为空、或明显是噪声串的行，一律不保留
+function filterOcrLines(lines){
+  return (lines||[]).filter(l=>{
+    const t = cleanOcrText(l.text||'');
+    if(!t || !isTranslatableText(t)) return false;
+    return (l.conf||0) >= OCR_MIN_CONF;
+  }).map(l=>cleanOcrText(l.text));
+}
+// 拿不到行结构（没有置信度）时的退化方案：按行清洗 + 噪声过滤
+function cleanOcrOutput(text){
+  return String(text||'').split(/\r?\n/)
+    .map(l=>cleanOcrText(l))
+    .filter(l=>l && isTranslatableText(l));
+}
+
+/* 判断一段文本是否值得送去翻译。
+ * 纯符号、纯数字、以及"字母数字混杂的无意义串"（IIl1O0、1O0l、x1y2）
+ * 翻了只会得到垃圾，直接跳过比翻出乱码更好——结果面板里不显示这一条，
+ * 而不是让用户看到一条乱码。
+ */
+function isTranslatableText(s){
+  const t = String(s||'').trim();
+  if(!t) return false;
+  // 去掉标点/符号后还剩什么
+  const core = t.replace(/[\s\p{P}\p{S}]+/gu, '');
+  if(!core) return false;                              // 纯符号
+  if(!core.replace(/\d+/g,'')) return false;           // 纯数字
+
+  const cjkCount = (core.match(/[\u4e00-\u9fff\u3040-\u30ff\uac00-\ud7af]/g)||[]).length;
+  // 含中日韩文字：基本可信（OCR 不太会"凭空"造出汉字组合）
+  if(cjkCount > 0) return true;
+
+  const letters = core.replace(/[^A-Za-z]/g,'');
+  const digits  = (core.match(/\d/g)||[]).length;
+  if(letters.length < 2) return false;                 // 孤字母或纯数字残片
+  // 只有 2 个字母却大小写混杂（cD、lI、iO）：正常文字里不存在这种写法，
+  // 图标/示意图区域被 OCR"造"出来的字符就是这个长相（全大写的 AI/OK/TV 仍会保留）
+  if(letters.length <= 2 && /[a-z]/.test(letters) && /[A-Z]/.test(letters)) return false;
+
+  // 数字混进字母中间（1O0l、x1y2、IIl1O0）：截图里的正文极少这样，
+  // 基本是 OCR 把 l/1、O/0、I/l 认混了。
+  const hasInnerDigit = /[A-Za-z]\d|\d[A-Za-z]/.test(core);
+  if(hasInnerDigit){
+    // 允许少量"版本号/型号"式内容（如 A4、B12、MP3），但它们通常是整串的一部分
+    const words = core.split(/\s+/);
+    const allCodes = words.every(w => /^[A-Za-z]{1,4}\d{1,3}$/.test(w) || /^\d{1,3}[A-Za-z]{1,4}$/.test(w));
+    if(!allCodes) return false;
+  }
+
+  // 大小写混乱且没有元音的长串（lI1lI、lIlIlI）也是噪声
+  const vowelRatio = (letters.match(/[aeiouAEIOU]/g)||[]).length / letters.length;
+  if(letters.length >= 4 && vowelRatio < 0.12) return false;
+
+  return true;
+}
+
+
+/* ---- 段落归组 ----
+ * 逐行独立翻译会丢掉上下文：一句话被拆成几行时，每行单翻出来都是残句。
+ * 但不能见行就合——界面里的"标签列表"（每行一条独立文案）合起来翻，
+ * 再按宽度切回去必然错位（实测 "隐私与安全" 被切成 "Privacy and"，
+ * 后半句串到了下一行）。所以只在"确实是一段话"时才合并。
+ */
+function groupLinesIntoParagraphs(lines){
+  if(!lines.length) return [];
+  const sorted = lines.slice().sort((a,b)=> (a.box.y0-b.box.y0) || (a.box.x0-b.box.x0));
+  const groups = [];
+  for(const ln of sorted){
+    const h = Math.max(1, ln.box.y1-ln.box.y0);
+    const g = groups[groups.length-1];
+    if(g && shouldJoinParagraph(g, ln, h)){
+      g.lines.push(ln);
+      g.box = {
+        x0:Math.min(g.box.x0, ln.box.x0), y0:Math.min(g.box.y0, ln.box.y0),
+        x1:Math.max(g.box.x1, ln.box.x1), y1:Math.max(g.box.y1, ln.box.y1)
+      };
+      continue;
+    }
+    groups.push({ lines:[ln], box:{...ln.box} });
+  }
+  for(const g of groups){
+    // 段落内按阅读顺序拼接；中文/日文直接连，西文之间补空格
+    let text = '';
+    g.lines.forEach((ln,i)=>{
+      if(i>0){
+        const prev = g.lines[i-1].text;
+        const cjkEnd = /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]$/.test(prev);
+        const cjkStart = /^[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]/.test(ln.text);
+        text += (cjkEnd || cjkStart) ? '' : ' ';
+      }
+      text += ln.text;
+    });
+    g.text = text.trim();
+  }
+  return groups;
+}
+
+/* 判断新的一行是否该并入当前段落。只有同时满足才合并：
+ *   1) 行距紧（小于 0.9 行高）且字号接近        —— 视觉上是一块
+ *   2) 左边界基本对齐（或明显是居中块）        —— 版面结构一致
+ *   3) 上一行"没写完"：结尾没有句末标点，或明显是未完的句子
+ * 第 3 条是关键：界面标签通常各自独立、字数接近，
+ * 而真正的段落里上一行往往以逗号/连词结尾、并未结束。
+ */
+function shouldJoinParagraph(g, ln, h){
+  const last = g.lines[g.lines.length-1];
+  const gap = ln.box.y0 - last.box.y1;
+  const lastH = Math.max(1, last.box.y1-last.box.y0);
+  const hDiff = Math.abs(h - lastH);
+
+  // 1) 行距与字号：字号差超过 25% 就不是同一块文字
+  //    （标题 + 正文常挨得很近，但绝不该合成一句）
+  if(gap >= h*0.9) return false;
+  if(hDiff > Math.min(h, lastH)*0.25) return false;
+  if(gap < 0) return false;                       // 重叠的框不合并
+
+  // 2) 左边界对齐（允许居中排版时略有偏移）
+  const leftDiff = Math.abs(ln.box.x0 - g.box.x0);
+  const centered = Math.abs(
+    ((ln.box.x0+ln.box.x1)/2) - ((last.box.x0+last.box.x1)/2)
+  ) < Math.max(ln.box.x1-ln.box.x0, last.box.x1-last.box.x0) * 0.25;
+  if(leftDiff > lastH*1.2 && !centered) return false;
+
+  const prevText = last.text.trim();
+  const nextText = ln.text.trim();
+
+  // 3) 硬信号：上一行以句末标点结束 → 话已说完，下一行是新内容
+  if(/[.。!！?？;；]$/.test(prevText)) return false;
+
+  // 4) 行宽模式：真正的段落只有最后一行会明显短于前几行；
+  //    若"每行宽度都差不多"或"忽长忽短"，那是并列的独立标签，不能合并。
+  const gW = g.box.x1 - g.box.x0;
+  const lineW = ln.box.x1 - ln.box.x0;
+  const lastW = last.box.x1 - last.box.x0;
+  // 当前段落已有多行时：新行若比首行还长很多，说明不是同段落的收尾行
+  if(g.lines.length >= 2 && lineW > gW*0.95) return false;
+  // 两行宽度差异够大（一行明显是短尾巴）→ 更像多行一句
+  const wRatio = Math.min(lineW,lastW) / Math.max(1, Math.max(lineW,lastW));
+
+  // 5) 上一行以停顿标点或连接词结尾 → 明确"话没说完"
+  const endsOpen = /[,;:，、；：\-–—]$/.test(prevText)
+    || /\b(and|or|the|a|an|of|to|for|with|in|on|at|is|are|was|were|that|which|who)$/i.test(prevText);
+  if(endsOpen) return true;
+
+  // 6) 中日韩文本没有词边界，只能靠"内容是否成句"判断。
+  //    菜单/列表这类"每行都是完整条目"的排版极常见，
+  //    特征是每行都以相同的收尾形式结束（如都以"円""元""件"结尾）。
+  if(isCjkText(prevText) && isCjkText(nextText)){
+    // 两行都以数字+单位收尾 → 各是一条独立条目
+    const endsWithAmount = /[0-9][,.]?[0-9]*\s*[円元¥$€]$/.test(prevText.replace(/\s/g,''))
+      && /[0-9][,.]?[0-9]*\s*[円元¥$€]$/.test(nextText.replace(/\s/g,''));
+    if(endsWithAmount) return false;
+    // 行尾形态一致（都以同类字符结尾）且都像完整短语 → 独立条目
+    if(/[円元件個枚本杯]$/.test(prevText) && /[円元件個枚本杯]$/.test(nextText)) return false;
+    // 中文标签：上一行已是完整短语（无尾部连接词）且两行长度接近 → 不合并
+    const lenRatio = Math.min(prevText.length,nextText.length)/Math.max(prevText.length,nextText.length);
+    if(lenRatio > 0.55 && !endsOpen) return false;
+  }
+
+  // 7) 没有明确信号时，只有宽度差异足够大才认为是同段落
+  return wRatio < 0.72;
+}
+function isCjkText(s){ return /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uac00-\ud7af]/.test(s||''); }
+// 段落译文按各行的字面占比切回去，行数多时也能对得上。
+// 切分点必须落在词边界上：早先直接按字数切，会把 "two-factor" 切成 "wo-factor"
+// 这种断词（首个字母被切到上一行），读起来完全不对。
+function splitTranslationByLines(group, translated){
+  const text = translated || '';
+  const n = group.lines.length;
+  if(n <= 1) return [text];
+  const weights = group.lines.map(l=>Math.max(1, l.text.replace(/\s+/g,'').length));
+  const total = weights.reduce((a,b)=>a+b,0);
+
+  // 西文按空格切出可安全断开的候选点；中日韩没有词边界，只能按字符切
+  const isCjk = /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]/.test(text);
+  const segs = [];
+  let cursor = 0;
+  for(let i=0;i<n;i++){
+    if(i === n-1){ segs.push(text.slice(cursor).trim()); break; }
+    const share = weights[i] / total;
+    // 累计目标位置，避免逐段取整造成的漂移
+    const target = Math.round(text.length *
+      (weights.slice(0,i+1).reduce((a,b)=>a+b,0) / total));
+    let cut = Math.max(cursor+1, Math.min(target, text.length));
+
+    if(isCjk || isCjkText(text)){
+      // 中文/日文：优先切在标点之后
+      const after = text.slice(cut, Math.min(text.length, cut+6)).search(/[，。；！？、]/);
+      if(after >= 0 && after <= 3) cut = cut + after + 1;
+      // 绝不能在"数量词"中间断开：实测把 "2,400日元" 切成 "2,400日" + "元"，
+      // 画面上一行显示"2,400日"、下一行显示"元..."，完全读不通。
+      cut = avoidBreakingUnits(text, cut, cursor);
+    }else{
+      // 西文：把切点吸附到最近的空格，保证不从单词中间断开
+      let probe = cut;
+      let found = -1;
+      for(let d=0; d<=8; d++){
+        if(text[probe-d] === ' '){ found = probe-d; break; }
+        if(text[probe+d] === ' '){ found = probe+d; break; }
+      }
+      if(found > cursor) cut = found;
+      // 优先在标点后断开（更接近原文的断句）
+      const punct = text.slice(cursor, cut).lastIndexOf(',');
+      if(punct > 0 && punct > (cut-cursor)*0.4) cut = cursor + punct + 1;
+    }
+    cut = Math.max(cursor+1, Math.min(cut, text.length));
+    segs.push(text.slice(cursor, cut).trim());
+    cursor = cut;
+  }
+  return segs;
+}
+
+/* 把切分点挪出"数量词/单位"内部，避免出现 "2,400日" + "元" 这种断法。
+ * 检查切点前后是否正处在一个 数字+单位 的组合中间，是就往右移到单位之后。
+ */
+function avoidBreakingUnits(text, cut, lowerBound){
+  const units = '元円¥$€£%个件枚本杯份张台次天年月日时分秒人kgKMBGBT';
+  // 向前看：如果切点左边紧邻数字/小数点，右边紧邻单位，说明正在数量词中间
+  let right = cut;
+  while(right < text.length && /[\s]/.test(text[right])) right++;
+  const leftIsNum = /[0-9,.\s]$/.test(text.slice(Math.max(0,cut-2), cut));
+  const rightCh = text[right] || '';
+  if(leftIsNum && rightCh && units.includes(rightCh)){
+    // 把整个单位连同后续可能的分隔符一起挪到本段
+    let k = right;
+    while(k < text.length && units.includes(text[k])) k++;
+    return k;
+  }
+  // 反过来：切点落在数字中间（"1,|200"）也要挪到数字边界之后
+  const beforeCh = text[cut-1] || '';
+  const afterCh = text[cut] || '';
+  if(/[0-9]/.test(beforeCh) && /[0-9]/.test(afterCh)){
+    let k = cut;
+    while(k < text.length && /[0-9]/.test(text[k])) k++;
+    return k;
+  }
+  return cut;
+}
+
+/* ---- 底色采样 ----
+ * 从文本框四周的外圈像素求中位色，用来盖住原文。
+ * 用中位数而不是均值：文字本身多是深色，均值会被拉灰。
+ */
+function sampleBgColor(ctx, box, imgW, imgH){
+  const pad = Math.max(1, Math.round((box.y1-box.y0)*0.35));
+  const x0 = Math.max(0, Math.floor(box.x0-pad)), x1 = Math.min(imgW, Math.ceil(box.x1+pad));
+  const y0 = Math.max(0, Math.floor(box.y0-pad)), y1 = Math.min(imgH, Math.ceil(box.y1+pad));
+  const w = x1-x0, h = y1-y0;
+  if(w<=0 || h<=0) return {r:255,g:255,b:255, luminance:1};
+  let data;
+  try{ data = ctx.getImageData(x0, y0, w, h).data; }catch(e){ return {r:255,g:255,b:255, luminance:1}; }
+  const rs=[], gs=[], bs=[];
+  const step = Math.max(1, Math.floor(Math.max(w,h)/60));
+  for(let y=0; y<h; y+=step){
+    for(let x=0; x<w; x+=step){
+      const px = (y*w+x)*4;
+      // 只采样框外圈：内圈是文字，会把中位色带偏
+      const inside = (x > box.x0-x0+1 && x < box.x1-x0-1 && y > box.y0-y0+1 && y < box.y1-y0-1);
+      if(inside) continue;
+      if(data[px+3] < 8) continue;
+      rs.push(data[px]); gs.push(data[px+1]); bs.push(data[px+2]);
+    }
+  }
+  if(!rs.length){ rs.push(255); gs.push(255); bs.push(255); }
+  const med = a => { a.sort((p,q)=>p-q); return a[Math.floor(a.length/2)]; };
+  const r = med(rs), g = med(gs), b = med(bs);
+  return { r, g, b, luminance: (0.299*r + 0.587*g + 0.114*b)/255 };
+}
+function rgbCss(c){ return `rgb(${c.r},${c.g},${c.b})`; }
+
+/* ---- 背景重建 ----
+ * 早先用"整块填一个中位色"，在渐变/彩色背景上必然露出一个个矩形补丁，
+ * 这是效果难看的主因。改成按行/列采样重建：
+ *   1) 判断框内背景是"近似纯色"还是"有明显渐变"
+ *   2) 纯色 → 直接填该色
+ *   3) 渐变 → 沿渐变方向逐条采样，画成一串细条，让填充跟着背景过渡
+ * 这样海报、渐变按钮、带纹理的底都能贴合得多。
+ */
+function sampleBgProfile(ctx, box, imgW, imgH){
+  const padY = Math.max(1, Math.round((box.y1-box.y0)*0.6));
+  const x0 = Math.max(0, Math.floor(box.x0-2)), x1 = Math.min(imgW, Math.ceil(box.x1+2));
+  const y0 = Math.max(0, Math.floor(box.y0-padY)), y1 = Math.min(imgH, Math.ceil(box.y1+padY));
+  const w = x1-x0, h = y1-y0;
+  const fallback = { solid:true, color:{r:255,g:255,b:255}, luminance:1, rows:null, cols:null };
+  if(w<=0 || h<=0) return fallback;
+  let data;
+  try{ data = ctx.getImageData(x0, y0, w, h).data; }catch(e){ return fallback; }
+
+  // 取框外上、下、左、右四条边带的中位色：背景的真实颜色在里面才是，
+  // 框内是文字（往往和背景反差大），拿它算一定会偏。
+  const med = arr => { if(!arr.length) return 255; const a=arr.slice().sort((p,q)=>p-q); return a[Math.floor(a.length/2)]; };
+  const band = (side)=>{
+    const rs=[],gs=[],bs=[];
+    const push=(x,y)=>{ const p=(y*w+x)*4; if(data[p+3]<8) return; rs.push(data[p]); gs.push(data[p+1]); bs.push(data[p+2]); };
+    const t = Math.max(1, Math.round(padY*0.6));
+    if(side==='top'){ for(let y=0;y<Math.min(t,h);y++) for(let x=0;x<w;x++) push(x,y); }
+    else if(side==='bottom'){ for(let y=Math.max(0,h-t);y<h;y++) for(let x=0;x<w;x++) push(x,y); }
+    else if(side==='left'){ for(let x=0;x<Math.min(t,w);x++) for(let y=0;y<h;y++) push(x,y); }
+    else { for(let x=Math.max(0,w-t);x<w;x++) for(let y=0;y<h;y++) push(x,y); }
+    return { r:med(rs), g:med(gs), b:med(bs), n:rs.length };
+  };
+  const top = band('top'), bottom = band('bottom'), left = band('left'), right = band('right');
+  // 上下差异明显 → 纵向渐变；左右差异明显 → 横向渐变
+  const vDiff = Math.abs(top.r-bottom.r)+Math.abs(top.g-bottom.g)+Math.abs(top.b-bottom.b);
+  const hDiff = Math.abs(left.r-right.r)+Math.abs(left.g-right.g)+Math.abs(left.b-right.b);
+
+  const base = { r:med([top.r,bottom.r]), g:med([top.g,bottom.g]), b:med([top.b,bottom.b]) };
+  const luminance = (0.299*base.r + 0.587*base.g + 0.114*base.b)/255;
+
+  // 纹理复杂度：采样条之间的色差。照片、噪点、花纹背景会明显偏高，
+  // 这类背景单靠几条采样重建不出细节，遮盖必然留痕，应改用底条方案。
+  const roughness = measureRoughness(data, w, h, vDiff >= hDiff, med);
+
+  // 差异很小就按纯色处理，省掉逐条绘制的开销
+  if(vDiff < 24 && hDiff < 24){
+    return { solid:true, color:base, luminance, rows:null, cols:null, vDiff, hDiff, roughness };
+  }
+
+  // 逐行（纵向渐变）或逐列（横向渐变）采样。取样带要紧贴文本框边缘，
+  // 这样填出来的颜色和相邻背景几乎无缝；离得太远会有可见色差。
+  const N = 24;
+  const edge = Math.max(1, Math.min(3, Math.round(Math.min(w,h)*0.06)));
+  if(vDiff >= hDiff){
+    const rows = [];
+    for(let i=0;i<N;i++){
+      const yy = Math.round((i+0.5)*h/N);
+      const rs=[],gs=[],bs=[];
+      const push=(x,y)=>{ const p=((y|0)*w+(x|0))*4; if(data[p+3]<8) return; rs.push(data[p]); gs.push(data[p+1]); bs.push(data[p+2]); };
+      for(let x=0;x<edge;x++) push(x, yy);              // 紧贴框左侧
+      for(let x=w-edge;x<w;x++) push(x, yy);            // 紧贴框右侧
+      rows.push({ r:med(rs), g:med(gs), b:med(bs) });
+    }
+    return { solid:false, color:base, luminance, rows, cols:null, vDiff, hDiff, roughness };
+  }else{
+    const cols = [];
+    for(let i=0;i<N;i++){
+      const xx = Math.round((i+0.5)*w/N);
+      const rs=[],gs=[],bs=[];
+      const push=(x,y)=>{ const p=((y|0)*w+(x|0))*4; if(data[p+3]<8) return; rs.push(data[p]); gs.push(data[p+1]); bs.push(data[p+2]); };
+      for(let y=0;y<edge;y++) push(xx, y);              // 紧贴框上方
+      for(let y=h-edge;y<h;y++) push(xx, y);            // 紧贴框下方
+      cols.push({ r:med(rs), g:med(gs), b:med(bs) });
+    }
+    return { solid:false, color:base, luminance, rows:null, cols, vDiff, hDiff, roughness };
+  }
+}
+
+/* 背景纹理复杂度：沿采样方向看相邻条的颜色跳变有多大。
+ * 照片、彩色噪点、花纹背景会明显偏高——这种背景重建不出细节，
+ * 硬盖会留下肉眼可见的矩形痕迹，此时应改用底条方案。
+ */
+function measureRoughness(data, w, h, vertical, med){
+  const N = 16;
+  const edge = Math.max(1, Math.min(3, Math.round(Math.min(w,h)*0.06)));
+  const strips = [];
+  if(vertical){
+    for(let i=0;i<N;i++){
+      const yy = Math.round((i+0.5)*h/N);
+      const rs=[],gs=[],bs=[];
+      const push=(x,y)=>{ const p=((y|0)*w+(x|0))*4; if(data[p+3]<8) return; rs.push(data[p]); gs.push(data[p+1]); bs.push(data[p+2]); };
+      for(let x=0;x<edge;x++) push(x,yy);
+      for(let x=w-edge;x<w;x++) push(x,yy);
+      strips.push([med(rs),med(gs),med(bs)]);
+    }
+  }else{
+    for(let i=0;i<N;i++){
+      const xx = Math.round((i+0.5)*w/N);
+      const rs=[],gs=[],bs=[];
+      const push=(x,y)=>{ const p=((y|0)*w+(x|0))*4; if(data[p+3]<8) return; rs.push(data[p]); gs.push(data[p+1]); bs.push(data[p+2]); };
+      for(let y=0;y<edge;y++) push(xx,y);
+      for(let y=h-edge;y<h;y++) push(xx,y);
+      strips.push([med(rs),med(gs),med(bs)]);
+    }
+  }
+  let sum = 0, n = 0;
+  for(let i=1;i<strips.length;i++){
+    const a = strips[i-1], b = strips[i];
+    sum += Math.abs(a[0]-b[0]) + Math.abs(a[1]-b[1]) + Math.abs(a[2]-b[2]);
+    n++;
+  }
+  return n ? sum/n : 0;
+}
+
+// 兼容旧接口：只要一个代表色时用这个
+function sampleBgColor(ctx, box, imgW, imgH){
+  const p = sampleBgProfile(ctx, box, imgW, imgH);
+  return { r:p.color.r, g:p.color.g, b:p.color.b, luminance:p.luminance };
+}
+
+/* ---- 描边绘制：任何背景上都看得清 ----
+ * 回填时底色采样再准也难免有偏差，给译文加一圈与文字反色的描边，
+ * 即使背景没盖干净也能读。这是字幕/漫画嵌字的标准做法。
+ */
+function fillTextOutlined(c, text, x, y, color, outline, width){
+  if(outline && width > 0){
+    c.lineJoin = 'round';
+    c.miterLimit = 2;
+    c.lineWidth = width;
+    c.strokeStyle = outline;
+    c.strokeText(text, x, y);
+  }
+  c.fillStyle = color;
+  c.fillText(text, x, y);
+}
+function pickTextColors(luminance){
+  // 背景浅 → 深字浅描边；背景深 → 白字深描边
+  return luminance > 0.55
+    ? { color:'#111418', outline:'rgba(255,255,255,.85)' }
+    : { color:'#ffffff', outline:'rgba(0,0,0,.75)' };
+}
+
+// 在给定宽高内，找一个尽量大的字号把文本放下（换行算高度）
+function fitFontSize(ctx, text, maxW, maxH, family, maxSize){
+  const hiCap = maxSize && maxSize > 0 ? Math.max(8, maxSize) : 200;
+  let lo = 6, hi = Math.max(8, Math.min(Math.round(maxH*1.6), 200, hiCap)), best = lo;
+  for(let i=0;i<7;i++){
+    const mid = (lo+hi)/2;
+    ctx.font = `${mid}px ${family}`;
+    const lines = wrapText(ctx, text, maxW);
+    const need = lines.length * mid * 1.18;
+    if(need <= maxH && lines.every(l=>ctx.measureText(l).width <= maxW)){ best = mid; lo = mid; }
+    else hi = mid;
+  }
+  return best;
+}
+
+/* 估算原文的字号。
+ * 用途：译文比原文短时（"Save changes" → "保存更改"），自适应字号会一路放大到
+ * 填满整个框，视觉上远大于原文，还会撑破按钮边界。
+ * 用"字符数 + 框宽"反推原文近似字号，再给译文设个上限，回填才像"原位替换"。
+ * 西文平均字符宽约 0.5em，中日韩约 1em。
+ */
+function estimateOriginalFontSize(srcText, box){
+  const s = String(srcText||'');
+  const n = s.replace(/\s+/g,'').length;
+  if(!n) return 0;
+  const w = Math.max(1, box.x1 - box.x0);
+  const h = Math.max(1, box.y1 - box.y0);
+  const isCjk = /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uac00-\ud7af]/.test(s);
+  const avgW = w / n;
+  let est = isCjk ? avgW : avgW / 0.52;
+  // 框高也是硬约束：字号不该超过行高
+  est = Math.min(est, h);
+  return Math.max(6, est);
+}
+function wrapText(ctx, text, maxW){
+  if(!text) return [''];
+  const out = [];
+  // 先按显式换行切段，再对每段做贪心折行
+  for(const para of String(text).split(/\r?\n/)){
+    if(!para){ out.push(''); continue; }
+    let line = '';
+    // 逐字符推进：中英混排下按空格切词会漏掉超长单词，逐字更稳
+    const tokens = /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]|[^\s\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]+|\s+/g;
+    const parts = para.match(tokens) || [para];
+    for(const tk of parts){
+      const next = line + tk;
+      if(line && ctx.measureText(next).width > maxW){
+        out.push(line.replace(/\s+$/,''));
+        line = tk.replace(/^\s+/,'');
+      }else{
+        line = next;
+      }
+      // 单个词就超宽：按字符硬切
+      while(ctx.measureText(line).width > maxW && line.length > 1){
+        let cut = line.length-1;
+        while(cut > 1 && ctx.measureText(line.slice(0,cut)).width > maxW) cut--;
+        out.push(line.slice(0,cut));
+        line = line.slice(cut);
+      }
+    }
+    out.push(line.replace(/\s+$/,''));
+  }
+  return out.length?out:[text];
+}
+
+/* ---- 把译文原位画回图片 ----
+ * 与 manga-image-translator / comic-translate 的思路一致：
+ * 重建背景遮住原文 → 在同一个框里用自适应字号重绘译文。
+ * 区别在于背景是"重建"而非"填色块"，且译文带描边，复杂背景也能读。
+ *
+ * style:
+ *   overlay —— 遮盖原文并原位替换（默认，最像原生界面）
+ *   band    —— 只在译文后面加半透明底条，不试图覆盖原文（复杂背景更稳妥）
+ *   text    —— 完全不动原图，只输出译文（由调用方出文本，不动画布）
+ */
+function renderTranslatedCanvas(srcCv, blocks, { fontFamily, style }={}){
+  const mode = style || 'overlay';
+  const out = document.createElement('canvas');
+  out.width = srcCv.width; out.height = srcCv.height;
+  const c = out.getContext('2d');
+  c.drawImage(srcCv, 0, 0);
+  if(mode === 'text') return out;      // 不动原图
+
+  const src = srcCv.getContext('2d');
+  const fam = fontFamily || '"Microsoft YaHei","PingFang SC","Hiragino Sans GB",-apple-system,"Segoe UI",Roboto,"Noto Sans CJK SC",sans-serif';
+
+  for(const b of blocks){
+    if(!b.translated) continue;
+    const box = b.box, bw = box.x1-box.x0, bh = box.y1-box.y0;
+    if(bw < 2 || bh < 2) continue;
+    const prof = b.profile || sampleBgProfile(src, box, srcCv.width, srcCv.height);
+    // 遮盖范围要贴着原文，外扩太多会在纯色背景上留出可见的色块边界。
+    // 只留 1px 抗锯齿余量。
+    const bleed = 1;
+    const padX = Math.max(2, bw*0.04), padY = Math.max(1, bh*0.08);
+
+    // 纹理越复杂，硬盖越容易露出矩形痕迹。按复杂度分档，而不是一刀切：
+    //   低   → 直接盖（重建得准，最干净）
+    //   中   → 盖完把边缘羽化，融进周围像素
+    //   高   → 改用底条，不再试图重建细节
+    const rough = prof.roughness || 0;
+    const useBand = (mode === 'band') || (mode === 'overlay' && !prof.solid && rough > 18);
+
+    if(useBand){
+      // 底条模式：先用重建的背景盖掉原文（否则译文会和原文叠在一起），
+      // 再在译文后面补一条半透明底衬，保证在杂乱背景上依然清晰。
+      c.save();
+      if(prof.solid){
+        c.fillStyle = rgbCss(prof.color);
+        c.fillRect(box.x0-bleed, box.y0-bleed, bw+bleed*2, bh+bleed*2);
+      }else{
+        paintGradientFill(c, prof, box, bw, bh);
+      }
+      c.restore();
+      const onLight = prof.luminance > 0.55;
+      drawTextInBox(c, b, box, bw, bh, padX, padY, fam, {
+        color: onLight ? 'rgba(0,0,0,.92)' : 'rgba(255,255,255,.98)',
+        outline: null,
+        bg: onLight ? 'rgba(255,255,255,.8)' : 'rgba(0,0,0,.6)',
+        rounded: true
+      });
+      continue;
+    }
+
+    // overlay：先重建背景。
+    // 注意：羽化必须"先盖实、再过渡"，不能直接对填充做高斯模糊——
+    // 模糊会让填充变淡、盖不住原文，反而露出残影（这个坑踩过一次）。
+    // 正确做法是先用实心填充完全覆盖，再沿边缘补一圈由内向外渐隐的过渡。
+    c.save();
+    if(prof.solid){
+      c.fillStyle = rgbCss(prof.color);
+      c.fillRect(box.x0-bleed, box.y0-bleed, bw+bleed*2, bh+bleed*2);
+    }else{
+      paintGradientFill(c, prof, box, bw, bh);
+    }
+    c.restore();
+
+    // 译文带描边写回，即使背景没盖干净也读得清
+    const tc = pickTextColors(prof.luminance);
+    drawTextInBox(c, b, box, bw, bh, padX, padY, fam, { color:tc.color, outline:tc.outline, bg:null });
+  }
+  return out;
+}
+
+/* 用重建出的渐变档案填充文本框区域。
+ * 关键在于采样要"贴边"：条带颜色取的是框外紧邻的像素，
+ * 若隔得太远，填充色和框内真实背景会有细微色差，透出一圈矩形暗影。
+ */
+function paintGradientFill(c, prof, box, bw, bh){
+  const strips = prof.rows || prof.cols || [];
+  const N = strips.length || 1;
+  const x0 = box.x0 - 1, y0 = box.y0 - 1, w = bw + 2, h = bh + 2;
+  for(let i=0;i<N;i++){
+    const col = strips[i];
+    if(!col) continue;
+    c.fillStyle = rgbCss(col);
+    if(prof.rows){
+      const yTop = y0 + h * i / N;
+      const yBot = y0 + h * (i+1) / N;
+      c.fillRect(x0, yTop, w, (yBot - yTop) + 1);
+    }else{
+      const xL = x0 + w * i / N;
+      const xR = x0 + w * (i+1) / N;
+      c.fillRect(xL, y0, (xR - xL) + 1, h);
+    }
+  }
+}
+
+/* 在一个框内绘制译文：自适应字号、自动换行、垂直居中、可选圆角底条 */
+function drawTextInBox(c, b, box, bw, bh, padX, padY, fam, { color, outline, bg, rounded }){
+  const maxW = Math.max(6, bw - padX*2);
+  const maxH = Math.max(6, bh - padY*2);
+  c.save();
+  // 字号上限：略大于原文字号即可。不加这个限制时，译文短（如 "保存更改"）
+  // 会被放大到填满整个框，撑破按钮、和相邻文字不协调。
+  // 注意还要区分"紧贴文字的框"和"含内边距的控件框"：
+  // 补漏识别出的按钮框，高度往往是整个按钮（52px）而不是文字高度（20px），
+  // 直接按框高算字号会让译文大出一倍，所以这类松框要用更小的系数。
+  const origSize = estimateOriginalFontSize(b.text, box);
+  const boxIsLoose = origSize > 0 && bh > origSize * 1.4;
+  const sizeCap = origSize > 0 ? origSize * (boxIsLoose ? 0.86 : 1.15) : 0;
+  let size = fitFontSize(c, b.translated, maxW, maxH, fam, sizeCap);
+  // 字号下限：小图里的短文本别缩到看不见
+  size = Math.max(size, Math.min(9, maxH));
+  c.font = `${size}px ${fam}`;
+  c.textBaseline = 'top';
+  const lines = wrapText(c, b.translated, maxW);
+  const lineH = size*1.18;
+  const totalH = lines.length*lineH;
+
+  let ty = box.y0 + (bh - totalH)/2;
+  const align = b.align || 'left';
+
+  if(bg){
+    // 底条按实际文字宽度画，不撑满整框，看起来更像字幕
+    let wMax = 0;
+    for(const ln of lines) wMax = Math.max(wMax, c.measureText(ln).width);
+    const pad = Math.max(3, size*0.35);
+    const bx = box.x0 - pad*0.5, by = ty - pad*0.5;
+    const bwid = Math.min(bw + pad, wMax + pad*2), bhei = totalH + pad;
+    c.fillStyle = bg;
+    if(rounded){
+      const r = Math.min(6, bhei/2);
+      roundRect(c, bx, by, bwid, bhei, r);
+      c.fill();
+    }else{
+      c.fillRect(bx, by, bwid, bhei);
+    }
+  }
+
+  const outlineW = outline ? Math.max(1.5, size*0.14) : 0;
+  for(const ln of lines){
+    if(ty > box.y1 + lineH) break;      // 溢出框就不再往下写，避免压到下一行
+    let tx = box.x0 + padX;
+    if(align === 'center'){
+      const lw = c.measureText(ln).width;
+      tx = box.x0 + Math.max(padX, (bw - lw)/2);
+    }
+    fillTextOutlined(c, ln, tx, ty, color, outline, outlineW);
+    ty += lineH;
+  }
+  c.restore();
+}
+function roundRect(c, x, y, w, h, r){
+  const rr = Math.min(r, w/2, h/2);
+  c.beginPath();
+  c.moveTo(x+rr, y);
+  c.arcTo(x+w, y,   x+w, y+h, rr);
+  c.arcTo(x+w, y+h, x,   y+h, rr);
+  c.arcTo(x,   y+h, x,   y,   rr);
+  c.arcTo(x,   y,   x+w, y,   rr);
+  c.closePath();
+}
+
+
+/* ---- 点击选词：把 OCR 词框映射到画布坐标，用于"点哪翻哪" ---- */
+function hitTestWord(words, x, y){
+  let best = null, bestArea = Infinity;
+  for(const w of words||[]){
+    const b = w.bbox;
+    if(!b) continue;
+    if(x >= b.x0-2 && x <= b.x1+2 && y >= b.y0-2 && y <= b.y1+2){
+      const area = (b.x1-b.x0)*(b.y1-b.y0);
+      if(area < bestArea){ bestArea = area; best = w; }
+    }
+  }
+  return best;
+}
+
+/* ---- 主流程：截图 → OCR → 翻译 → 回填 ---- */
+let trBusy = false;
+async function translateCanvas(srcCv, {
+  from = S.trFrom, to = S.trTo, engine = S.trEngine, mode = S.trMode,
+  onProgress, signal, keepWords
+} = {}){
+  if(!tesseractReady) throw new Error('OCR 引擎未加载，请检查网络后在设置中重试');
+  srcCv = toCanvas(srcCv);
+  const toLang = langOf(to);
+  const auto = !from || from === 'auto';
+  if(!auto && langOf(from).code === toLang.code) throw new Error('原文语言与目标语言相同，请重新选择');
+
+  // 1) 识别。「自动检测」必须走两步检测：先用 chi_sim+eng 粗识别判出语种，再用对应语言包精识别。
+  //    旧实现直接取 langOf('auto').tess = 'eng'，等于把中文截图当英文认，识别出来的原文就是错的。
+  const words = await ocrBySetting(srcCv, {
+    fromCode: from,
+    cb: m=>{ if(onProgress && m.status==='recognizing text') onProgress({phase:'ocr', pct:Math.round((m.progress||0)*100)}); }
+  });
+  if(signal && signal.aborted) throw new Error('已取消');
+
+  // 过滤掉落在图片/头像/图标区域上的"幻觉文字"。
+  // Tesseract 对这类区域会凭空造出几个字（实测纯色头像块被读成"本"、"了属"），
+  // 不剔掉就会翻译出用户图里根本不存在的内容。
+  // 只对短文本生效：幻觉字一定很短，而正文即便压在复杂背景上也不能删。
+  const srcCtx = srcCv.getContext('2d');
+  const allLines = mergeWordBoxes(words.words, srcCv.width);
+  const lines = allLines.filter(l=>{
+    const core = String(l.text||'').replace(/[\s\p{P}\p{S}]+/gu,'');
+    if(core.length > 4) return true;                    // 长文本一律保留
+    return !isImageLikeRegion(srcCtx, l.box, srcCv.width, srcCv.height);
+  });
+  if(!lines.length) return { canvas:null, blocks:[], words:words.words, empty:true, fromCode:from };
+
+  // 自动检测时按识别出来的原文判定真实语种；判定不出（纯拉丁字母）就交给接口自己认，
+  // 但绝不能再落到"英语"上——那会让中文/其他语言的内容被原样退回来。
+  const srcCode = auto ? detectLangCode(words.text) : from;
+  // 原文本来就是目标语言（例如中文截图翻成中文）：直接告诉用户，不做无意义翻译
+  if(srcCode !== 'auto' && srcCode === toLang.code) return { canvas:null, blocks:[], words:words.words, empty:true, fromCode:srcCode, sameLang:true };
+
+  // 2) 翻译。按段落送翻以保留上下文，再把整段译文切回各行
+  const paras = groupLinesIntoParagraphs(lines);
+  if(onProgress) onProgress({phase:'translate', done:0, total:paras.length});
+  let sameCount = 0, detectedCode = srcCode;
+  const paraTrans = await translateTexts(paras.map(p=>p.text), {
+    from: srcCode, to, engine, signal,
+    onDetect: code=>{ if(srcCode === 'auto' && LANG_MAP[code]) detectedCode = code; },
+    onStep: (d,t,f,same)=>{ if(onProgress) onProgress({phase:'translate', done:d, total:t}); if(same) sameCount = same; }
+  });
+  // 段落译文按行切分，行数>1 的段落用它自己的切分结果，单行段落直接用
+  const lineTrans = new Map();
+  paras.forEach((p,pi)=>{
+    const segs = splitTranslationByLines(p, paraTrans[pi] || '');
+    p.lines.forEach((ln,li)=> lineTrans.set(ln, segs[li] || ''));
+  });
+  const trans = lines.map(l=> lineTrans.get(l) || '');
+
+  const src = srcCv.getContext('2d');
+  const blocks = lines.map((l,i)=>({
+    text: l.text,
+    translated: trans[i] || '',
+    box: l.box,
+    conf: l.conf,
+    // 背景档案在渲染时用，提前算好避免渲染阶段重复取像素
+    profile: sampleBgProfile(src, l.box, srcCv.width, srcCv.height)
+  })).filter(b=>b.translated);
+
+  // 3) 回填。mode==='text' 时只出对照文本、不动图
+  const canvas = (mode === 'overlay' || mode === 'band') && blocks.length
+    ? renderTranslatedCanvas(srcCv, blocks, { fontFamily: S.trFont, style: mode })
+    : null;
+  return { canvas, blocks, words: keepWords ? words.words : null, empty:!blocks.length,
+           sameCount: sameCount||0, fromCode: detectedCode || srcCode };
+}
+
+/* ---- OCR：按指定语言识别（独立于设置里的 OCR 语言）----
+ * maxSide 默认读设置里的识别精度上限，这样「精细（1800px）」对翻译同样生效；
+ * 小字截图调高它往往能直接决定这一行认不认得出来。
+ *
+ * 关于 worker 池：每换一种语言组合就要单独建一个 Tesseract worker，
+ * 每个 worker 都要载入 wasm 实例 + 语言数据（chi_sim 1.6MB、eng 2.8MB）。
+ * 实测连续建 3 个以上时，recognize 会长时间无响应（浏览器里表现为"翻译卡死"），
+ * 所以这里限制最多缓存 2 个，超出就先 terminate 最旧的。
+ */
+const ocrExtraWorkers = new Map();
+const OCR_WORKER_MAX = 2;
+
+function evictOcrWorkers(keepKey){
+  if(ocrExtraWorkers.size <= OCR_WORKER_MAX) return;
+  for(const [k, w] of [...ocrExtraWorkers]){
+    if(ocrExtraWorkers.size <= OCR_WORKER_MAX) break;
+    if(k === keepKey) continue;
+    try{ w.terminate(); }catch(e){}
+    ocrExtraWorkers.delete(k);
+  }
+}
+
+// 给任意 promise 加超时，避免某个环节无响应时整个流程卡死
+function withTimeout(p, ms, label){
+  return Promise.race([
+    p,
+    new Promise((_, rej)=> setTimeout(()=> rej(new Error(label||'操作超时')), ms))
+  ]);
+}
+
+async function ocrWithLang(srcCv, tessLang, opts = {}){
+  const maxSide = opts.maxSide || S.ocrSide;
+  const cb = opts.cb;
+  // 语言串可能是 "chi_sim+eng" 或 "chi_sim,eng"，两种分隔符都要认。
+  // 之前只按逗号拆，于是 "chi_sim+eng" 被当成一个语言名，
+  // Tesseract 就去请求 chi_sim+eng.traineddata.gz —— 本地根本没有这个文件，
+  // 直接 404，worker 建不起来，表现就是"中文翻译一直卡住/失败"。
+  const langs = String(tessLang||'eng').split(/[+,]/).map(s=>s.trim()).filter(Boolean);
+  const key = langs.join('+');
+  let worker = ocrExtraWorkers.get(key);
+  if(!worker){
+    const resolved = await resolveLangPath(key);
+    const { langPath, allLocal } = resolved;
+    // 走 CDN 时只能单语言（见 resolveLangPath 注释），这里用实际可用的语言建 worker
+    const useLangs = resolved.langs && resolved.langs.length ? resolved.langs : langs;
+    if(!allLocal && cb) cb({ status:'loading language', progress:0, note:`正在下载 ${useLangs.join('+')} 语言包…` });
+    // 建 worker 也加超时：语言包缺失/网络异常时不应该无限等下去
+    worker = await withTimeout(
+      Tesseract.createWorker(useLangs, 1, {
+        langPath,
+        corePath: NLP_CDNS[0],
+        workerPath: WORKER_CDNS[0],
+        logger: m=>{ if(cb) cb(m); }
+      }),
+      25000,
+      `OCR 引擎初始化超时（${useLangs.join('+')}），请重试或在设置中更换识别语言`
+    );
+    ocrExtraWorkers.set(key, worker);
+    evictOcrWorkers(key);
+  }
+  const scale = Math.min(1, (maxSide||2000)/Math.max(srcCv.width, srcCv.height));
+  let workCv = srcCv;
+  if(scale < 1){
+    workCv = document.createElement('canvas');
+    workCv.width = Math.round(srcCv.width*scale);
+    workCv.height = Math.round(srcCv.height*scale);
+    workCv.getContext('2d').drawImage(srcCv, 0, 0, workCv.width, workCv.height);
+  }
+  // 截图里的文字常散落在色块、按钮、图标之上，先切到稀疏文字模式，
+  // 否则默认版面分析会把这类区域当成图形整块跳过。
+  await applySparseMode(worker);
+  // 识别本身加超时：worker 状态异常时 recognize 可能永不返回
+  let data;
+  try{
+    const r = await withTimeout(
+      worker.recognize(workCv, {}, { text:true, blocks:true }),
+      20000,
+      `文字识别超时（${key}）`
+    );
+    data = r.data;
+  }catch(e){
+    // 超时后这个 worker 多半已经坏了，丢掉让下次重建
+    try{ worker.terminate(); }catch(err){}
+    ocrExtraWorkers.delete(key);
+    throw e;
+  }
+  const words = [];
+  for(const b of data.blocks||[]){
+    for(const p of (b.paragraphs||[])){
+      for(const l of (p.lines||[])){
+        for(const w of (l.words||[])){ if(w&&w.text&&w.bbox) words.push({text:w.text, bbox:w.bbox, conf:w.confidence||0}); }
+      }
+    }
+  }
+  // 白字彩底这类反色组合 Tesseract 容易整段漏掉，但盲目跑第二遍会引入噪声
+  // （实测会把 "Edit" 读成 "EditE"、中文出现重字）。
+  // 所以只在第一遍结果"明显偏少"时才补救：词数太少，或大图上几乎没识别出内容。
+  const area = workCv.width * workCv.height;
+  const expectMin = Math.max(3, Math.round(area / 220000));
+  let rawWords = words;
+  if(opts.retryInverted !== false && words.length < expectMin){
+    const probed = await recognizeWords(worker, workCv, { invert:true, boost:true });
+    if(probed.length > words.length) rawWords = mergeWordSets(words, probed);
+  }
+  const fx = srcCv.width/workCv.width, fy = srcCv.height/workCv.height;
+
+  // 补漏（默认开启）：彩色按钮上的文字常被 Tesseract 整体当图形跳过，
+  // 表现为"这一块完全没翻"。findColorBlocks 现在会先用已识别词框打遮罩，
+  // 只在"真有内容却没认出字"的区域补识别，并有置信度/长度闸门挡噪声，
+  // 所以可以安全地默认打开。
+  let baseWords = scaleWordBoxes(rawWords, fx, fy);
+  if(opts.recoverMissing !== false){
+    try{
+      const recovered = await recoverMissedText(srcCv, worker, baseWords);
+      if(recovered.length) baseWords = mergeWordSets(baseWords, recovered);
+    }catch(e){ /* 补漏失败就用原结果，不影响主流程 */ }
+  }
+  return { text:data.text||'', words: baseWords };
+}
+// 把工作画布上的词框换算回原图坐标（反相补救与补漏都要用）
+function scaleWordBoxes(words, fx, fy){
+  return (words||[]).map(w=>({
+    text:w.text, conf:w.conf,
+    bbox:{ x0:w.bbox.x0*fx, y0:w.bbox.y0*fy, x1:w.bbox.x1*fx, y1:w.bbox.y1*fy }
+  }));
+}
+function resetOcrExtraWorkers(){
+  for(const w of ocrExtraWorkers.values()){ try{ w.terminate(); }catch(e){} }
+  ocrExtraWorkers.clear();
+}
+
+/* 版面模式：实测 PSM 3（默认，自动版面分析）识别效果最好。
+ * 曾经想用 PSM 11(SPARSE_TEXT) 抢救"色块上的文字"，结果适得其反——
+ * 在同一张测试图上 PSM 3 能读出 "Delete | Danger | zone | actions"，
+ * 而 PSM 11/12 一个词都读不出（n=0）。截图虽然版面零散，
+ * 但 Tesseract 的默认分析对它们反而更稳，因此这里坚持用默认模式。
+ * 保留这个函数是为了把"别再试 PSM 11"这个结论钉在代码里。
+ */
+async function applySparseMode(worker){ /* 保持默认 PSM 3，不做修改 */ }
+
+/* ---- 补漏识别：找回被漏掉的"色块上的文字" ----
+ * 实测痛点：并排的彩色按钮（红底 Delete + 绿底 Confirm）无论用哪个 PSM、
+ * 是否反相，整图识别都读不出一个字——Tesseract 把这类区域整体当成了图形。
+ * 裁剪出来单独放大识别却能立刻读对。
+ * 所以这里做一次"找遗漏区 → 裁剪放大 → 重识别"的补漏：
+ *   1) 找出与周围底色明显不同、且面积够大的矩形色块
+ *   2) 排除已经识别出文字的框
+ *   3) 对剩下的可疑区放大识别，结果并入
+ */
+function findColorBlocks(ctx, imgW, imgH, words){
+  const boxes = [];
+  const S = 4;                                  // 降采样步长，兼顾速度
+  const gw = Math.max(1, Math.floor(imgW/S)), gh = Math.max(1, Math.floor(imgH/S));
+  let img;
+  try{
+    img = ctx.getImageData(0, 0, imgW, imgH).data;
+  }catch(e){ return boxes; }
+
+  // 以网格统计每个小格的平均色
+  const cell = (cx, cy)=>{
+    const x0 = cx*S, y0 = cy*S;
+    let r=0,g=0,b=0,n=0;
+    for(let y=y0; y<Math.min(y0+S,imgH); y++){
+      for(let x=x0; x<Math.min(x0+S,imgW); x++){
+        const p=(y*imgW+x)*4;
+        if(img[p+3]<8) continue;
+        r+=img[p]; g+=img[p+1]; b+=img[p+2]; n++;
+      }
+    }
+    return n ? {r:r/n, g:g/n, b:b/n} : null;
+  };
+
+  // 统计全图颜色分布，取出现最多的作为背景色
+  const hist = new Map();
+  const cellColor = new Array(gw*gh);
+  for(let cy=0; cy<gh; cy++) for(let cx=0; cx<gw; cx++){
+    const c = cell(cx,cy);
+    cellColor[cy*gw+cx] = c;
+    if(!c) continue;
+    const k = `${c.r>>4},${c.g>>4},${c.b>>4}`;
+    hist.set(k, (hist.get(k)||0)+1);
+  }
+  let bgKey = null, bgMax = 0;
+  for(const [k,v] of hist) if(v > bgMax){ bgMax = v; bgKey = k; }
+  const [br,bg2,bb] = (bgKey||'15,15,15').split(',').map(Number);
+  const bgR = br*16+8, bgG = bg2*16+8, bgB = bb*16+8;
+
+  // ---- 关键改动 1：把"已识别出文字的区域"先标出来 ----
+  // 旧实现只用色差找块，结果把"按钮 + 旁边正文"连成一片，
+  // 裁剪后把正文也读进来，造成 "Delete Dangerzone actions" 这种串行。
+  // 现在先把已识别词的覆盖范围在网格上打叉，只在"真有内容却没认出字"的地方补漏。
+  const covered = new Uint8Array(gw*gh);
+  const PAD = 2;    // 词框外扩 2 格，容忍 OCR 框略小于实际字形
+  for(const w of words||[]){
+    if(!w.bbox) continue;
+    const gx0 = Math.max(0, Math.floor(w.bbox.x0/S) - PAD);
+    const gx1 = Math.min(gw-1, Math.ceil(w.bbox.x1/S) + PAD);
+    const gy0 = Math.max(0, Math.floor(w.bbox.y0/S) - PAD);
+    const gy1 = Math.min(gh-1, Math.ceil(w.bbox.y1/S) + PAD);
+    for(let y=gy0; y<=gy1; y++) for(let x=gx0; x<=gx1; x++) covered[y*gw+x] = 1;
+  }
+
+  // 标记"有内容"的格子：与背景色差异明显
+  const flag = new Uint8Array(gw*gh);
+  for(let cy=0; cy<gh; cy++) for(let cx=0; cx<gw; cx++){
+    const c = cellColor[cy*gw+cx];
+    if(!c) continue;
+    const diff = Math.abs(c.r-bgR)+Math.abs(c.g-bgG)+Math.abs(c.b-bgB);
+    if(diff > 90) flag[cy*gw+cx] = 1;
+  }
+
+  // ---- 关键改动 2：只保留"有内容 且 未被已识别文字覆盖"的格子 ----
+  const cand = new Uint8Array(gw*gh);
+  for(let i=0; i<gw*gh; i++) if(flag[i] && !covered[i]) cand[i] = 1;
+
+  // 连通域聚合
+  const seen = new Uint8Array(gw*gh);
+  for(let cy=0; cy<gh; cy++){
+    for(let cx=0; cx<gw; cx++){
+      const idx = cy*gw+cx;
+      if(!cand[idx] || seen[idx]) continue;
+      const stack = [[cx,cy]];
+      seen[idx] = 1;
+      let minX=cx,maxX=cx,minY=cy,maxY=cy,n=0;
+      while(stack.length){
+        const [x,y] = stack.pop();
+        n++;
+        if(x<minX)minX=x; if(x>maxX)maxX=x; if(y<minY)minY=y; if(y>maxY)maxY=y;
+        for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){
+          const nx=x+dx, ny=y+dy;
+          if(nx<0||ny<0||nx>=gw||ny>=gh) continue;
+          const ni = ny*gw+nx;
+          if(cand[ni] && !seen[ni]){ seen[ni]=1; stack.push([nx,ny]); }
+        }
+      }
+      const bx0 = minX*S, by0 = minY*S, bx1 = Math.min(imgW,(maxX+1)*S), by1 = Math.min(imgH,(maxY+1)*S);
+      const bw = bx1-bx0, bh = by1-by0;
+
+      // 过滤：只收像"一行文字/一个按钮"的区域
+      if(bw < 30 || bh < 14) continue;              // 太小多半是噪点
+      if(bw*bh > imgW*imgH*0.30) continue;          // 太大多半是整片背景
+      if(bw/bh > 10) continue;                      // 太扁不像文字行
+      if(bh > imgH*0.45) continue;
+      // 密度检查：区域内"有内容"的格子要占一定比例，排除零散噪点
+      const cellArea = (maxX-minX+1)*(maxY-minY+1);
+      if(n / Math.max(1,cellArea) < 0.12) continue;
+
+      boxes.push({x0:bx0, y0:by0, x1:bx1, y1:by1});
+    }
+  }
+  return boxes.slice(0, 16);   // 限个数，避免拖慢
+}
+
+/* 对"有内容但没认出字"的区域逐个放大重识别。
+ *
+ * 踩过的坑：
+ *  1) 裁剪时不能补白边。哪怕只有 4px 的背景边距，Tesseract 就会返回空文本；
+ *     贴着色块边界裁反而一读就准。
+ *  2) 蓝底白字这类反色内容，原图直读经常失败，反相后就好读——
+ *     所以每个候选区都试"原图"和"反相"两种，取置信度高的。
+ *  3) 必须过滤噪声：单块识别结果太长（> 40 字）说明把整段正文读进来了，
+ *     宁可丢掉也不要往结果里塞串行的错误内容。
+ */
+async function recoverMissedText(srcCv, worker, words){
+  const ctx = srcCv.getContext('2d');
+  const blocks = findColorBlocks(ctx, srcCv.width, srcCv.height, words);
+  if(!blocks.length) return [];
+
+  const found = [];
+
+  // 把一块画布放大，可选反相
+  const prepBlock = (b, up, invert)=>{
+    const bw = b.x1-b.x0, bh = b.y1-b.y0;
+    const cv = document.createElement('canvas');
+    cv.width = Math.max(1, Math.round(bw*up));
+    cv.height = Math.max(1, Math.round(bh*up));
+    const cc = cv.getContext('2d');
+    cc.imageSmoothingEnabled = true;
+    cc.imageSmoothingQuality = 'high';
+    cc.drawImage(srcCv, b.x0, b.y0, bw, bh, 0, 0, cv.width, cv.height);
+    if(invert){
+      try{
+        const im = cc.getImageData(0,0,cv.width,cv.height);
+        const d = im.data;
+        for(let i=0;i<d.length;i+=4){ d[i]=255-d[i]; d[i+1]=255-d[i+1]; d[i+2]=255-d[i+2]; }
+        cc.putImageData(im,0,0);
+      }catch(e){ return null; }
+    }
+    return cv;
+  };
+
+  // 识别一块，返回 {text, conf} 或 null
+  const tryBlock = async (b, invert)=>{
+    const bw = b.x1-b.x0, bh = b.y1-b.y0;
+    const up = Math.max(1, Math.min(4, 380 / Math.max(bw, bh)));
+    const cv = prepBlock(b, up, invert);
+    if(!cv) return null;
+    try{
+      const r = await withTimeout(worker.recognize(cv, {}, { text:true, blocks:true }), 12000, '补漏识别超时');
+      const here = [];
+      for(const blk of r.data.blocks||[])
+        for(const p of (blk.paragraphs||[]))
+          for(const l of (p.lines||[]))
+            for(const w of (l.words||[])){
+              if(!w.text || !w.text.trim() || !w.bbox) continue;
+              here.push({
+                text: w.text.trim(), conf: w.confidence||0,
+                bbox: {
+                  x0: b.x0 + w.bbox.x0/up, y0: b.y0 + w.bbox.y0/up,
+                  x1: b.x0 + w.bbox.x1/up, y1: b.y0 + w.bbox.y1/up
+                }
+              });
+            }
+      if(here.length) return here;
+      // 单行小块时未必填 blocks 层次，退回用整块文本
+      const txt = (r.data.text||'').trim().replace(/\s+/g,' ');
+      if(txt) return [{ text: txt, conf: r.data.confidence||60, bbox:{x0:b.x0,y0:b.y0,x1:b.x1,y1:b.y1} }];
+    }catch(e){ /* 单块失败不影响其它块 */ }
+    return null;
+  };
+
+  for(const b of blocks){
+    const bw = b.x1-b.x0, bh = b.y1-b.y0;
+    if(bw < 8 || bh < 8) continue;
+
+    let best = await tryBlock(b, false);
+    // 原图读不出、或置信度偏低时，试反相（蓝底白字这类反色内容）
+    const weak = !best || best.every(w => (w.conf||0) < 75);
+    if(weak){
+      const inv = await tryBlock(b, true);
+      if(inv){
+        const score = arr => arr.length ? arr.reduce((a,w)=>a+(w.conf||0),0)/arr.length : 0;
+        if(!best || score(inv) > score(best)) best = inv;
+      }
+    }
+    if(!best || !best.length) continue;
+
+    // 质量闸门：低置信度、过长文本一律丢弃
+    const totalLen = best.reduce((a,w)=>a+w.text.length,0);
+    if(totalLen > 44) continue;                        // 太长 → 把正文读进来了
+    const avgConf = best.reduce((a,w)=>a+(w.conf||0),0)/best.length;
+    if(avgConf < 50) continue;
+    // 全是符号/单字符的也丢
+    if(!/[A-Za-z0-9\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uac00-\ud7af]/.test(best.map(w=>w.text).join(''))) continue;
+
+    found.push(...best.filter(w=>(w.conf||0) >= 40));
+  }
+  return found;
+}
+
+/* 对同一张图跑一次识别并抽出词框，可选先做反相/对比增强。
+ * 反相后的坐标仍然对应原图，所以不需要额外换算。
+ */
+async function recognizeWords(worker, workCv, { invert, boost } = {}){
+  let input = workCv;
+  if(invert || boost){
+    try{
+      input = document.createElement('canvas');
+      input.width = workCv.width; input.height = workCv.height;
+      const ic = input.getContext('2d');
+      ic.drawImage(workCv, 0, 0);
+      const img = ic.getImageData(0, 0, input.width, input.height);
+      const d = img.data;
+      for(let i=0;i<d.length;i+=4){
+        if(invert){ d[i] = 255-d[i]; d[i+1] = 255-d[i+1]; d[i+2] = 255-d[i+2]; }
+        if(boost){
+          // 拉对比度：让文字与底的差值更大，Tesseract 的二值化更容易切对
+          d[i]   = clamp255((d[i]  -128)*1.6 + 128);
+          d[i+1] = clamp255((d[i+1]-128)*1.6 + 128);
+          d[i+2] = clamp255((d[i+2]-128)*1.6 + 128);
+        }
+      }
+      ic.putImageData(img, 0, 0);
+    }catch(e){ return []; }     // 画布被污染等情况，放弃这一轮补救
+  }
+  try{
+    await applySparseMode(worker);
+    const r = await withTimeout(worker.recognize(input, {}, { text:true, blocks:true }), 15000, '反相补救识别超时');
+    const data = r.data;
+    const out = [];
+    for(const b of data.blocks||[]){
+      for(const p of (b.paragraphs||[])){
+        for(const l of (p.lines||[])){
+          for(const w of (l.words||[])){ if(w&&w.text&&w.bbox && (w.confidence||0) >= OCR_RETRY_MIN_CONF) out.push({text:w.text, bbox:w.bbox, conf:w.confidence||0}); }
+        }
+      }
+    }
+    return out;
+  }catch(e){ return []; }
+}
+function clamp255(v){ return v<0?0:(v>255?255:v); }
+
+/* 合并两次识别的词框：位置高度重合的视为同一个词，保留置信度高的那个。
+ * 重合判断用交并比，阈值取 0.5 —— 低了对不齐，高了会漏掉反相才认出的词。
+ */
+function mergeWordSets(base, extra){
+  const out = base.slice();
+  const iou = (a,b)=>{
+    const x0=Math.max(a.x0,b.x0), y0=Math.max(a.y0,b.y0);
+    const x1=Math.min(a.x1,b.x1), y1=Math.min(a.y1,b.y1);
+    if(x1<=x0 || y1<=y0) return 0;
+    const inter=(x1-x0)*(y1-y0);
+    const ua=(a.x1-a.x0)*(a.y1-a.y0)+(b.x1-b.x0)*(b.y1-b.y0)-inter;
+    return ua>0 ? inter/ua : 0;
+  };
+  for(const w of extra){
+    if(!w.text || !w.text.trim()) continue;
+    let dup = false;
+    for(const b of out){
+      if(iou(w.bbox, b.bbox) > 0.5){
+        // 同一个位置：置信度更高的胜出（反相识别出的常比原图更准）
+        if((w.conf||0) > (b.conf||0)){ b.text = w.text; b.conf = w.conf; }
+        dup = true;
+        break;
+      }
+    }
+    if(!dup) out.push(w);
+  }
+  return out;
+}
+
+/* ---- 自动检测原文语言：按脚本特征判断，够用且不联网 ---- */
+function detectTessLangs(text){
+  const t = text || '';
+  const has = re => re.test(t);
+  const jp = has(/[\u3040-\u30ff]/);                                       // 假名是日语独有特征
+  const kr = has(/[\uac00-\ud7af]/);
+  const cn = has(/[\u4e00-\u9fff]/);
+  const cy = has(/[\u0400-\u04ff]/);
+  const ar = has(/[\u0600-\u06ff]/);
+  const th = has(/[\u0e00-\u0e7f]/);
+  const he = has(/[\u0590-\u05ff]/);
+  const el = has(/[\u0370-\u03ff]/);
+  const hi = has(/[\u0900-\u097f]/);
+  const la = has(/[A-Za-z]/);
+  const parts = [];
+  if(jp) parts.push('jpn');
+  else if(cn) parts.push('chi_sim');
+  if(kr) parts.push('kor');
+  if(cy) parts.push('rus');
+  if(ar) parts.push('ara');
+  if(th) parts.push('tha');
+  if(he) parts.push('heb');
+  if(el) parts.push('ell');
+  if(hi) parts.push('hin');
+  if(!parts.length && la) parts.push('eng');
+  if(la && !parts.includes('eng')) parts.push('eng');   // 中英混排是截图常态，带上英语明显更稳
+  return parts.length ? parts.join('+') : 'eng';
+}
+// 「自动检测」分两步：先用通用组合粗识别一次，按脚本判断出语种，再用对应语言包精识别
+async function ocrAutoDetect(srcCv, { maxSide, cb } = {}){
+  const probe = await ocrWithLang(srcCv, 'chi_sim+eng', { maxSide: Math.min(maxSide||S.ocrSide, 1200), cb });
+  const guess = detectTessLangs(probe.text);
+  if(guess === 'chi_sim+eng') return probe;
+  try{
+    return await ocrWithLang(srcCv, guess, { maxSide, cb });
+  }catch(e){
+    return probe;   // 语言包下不下来就用粗识别结果，别让整个流程失败
+  }
+}
+// 按原文语言设置选择识别方式
+async function ocrBySetting(srcCv, { maxSide, cb, fromCode } = {}){
+  const code = fromCode || S.trFrom;
+  if(code === 'auto') return ocrAutoDetect(srcCv, { maxSide, cb });
+  return ocrWithLang(srcCv, tessForOcr(code), { maxSide, cb });
+}
+
+/* ---- 语言包可用性：探测 tessdata 目录里有没有对应的 .traineddata.gz ----
+ * 放在这里而不是翻译模块里：worker 创建（getWorker / ocrWithLang）也要用它。
+ */
+const packState = new Map();     // tessLang -> 'local' | 'remote'
+async function probeLangPack(tessLang){
+  if(packState.has(tessLang)) return packState.get(tessLang);
+  let state = 'remote';
+  if(LOCAL_TESS[tessLang]) state = 'local';
+  else{
+    try{
+      const r = await fetch(`${qaLangPath()}/${tessLang}.traineddata.gz`, { method:'HEAD' });
+      state = r.ok ? 'local' : 'remote';
+    }catch(e){ state = 'remote'; }
+  }
+  packState.set(tessLang, state);
+  return state;
+}
+
+function getWorker(){
+  if(ocrWorker && ocrWorkerLang===S.ocrLang && ocrWorkerQty===S.ocrQuality) return Promise.resolve(ocrWorker);
+  if(ocrWorkerBusy) return ocrWorkerBusy;
+  const langs = S.ocrLang.split('+').filter(Boolean);
+  ocrWorkerBusy = resolveLangPath(S.ocrLang).then(({langPath})=>Tesseract.createWorker(langs, 1, {
+    langPath,
+    corePath: NLP_CDNS[0],
+    workerPath: WORKER_CDNS[0],
+    logger: m=>{ if(ocrLogCb) ocrLogCb(m); }
+  })).then(w=>{
+    if(ocrWorker && ocrWorker!==w){ try{ ocrWorker.terminate(); }catch(e){} }
+    ocrWorker=w; ocrWorkerLang=S.ocrLang; ocrWorkerQty=S.ocrQuality;
+    return w;
+  }).finally(()=>{ ocrWorkerBusy=null; });
+  return ocrWorkerBusy;
+}
+
+async function refreshPackStatus(){
+  const el = $('#set-tr-packs');
+  if(!el) return;
+  let local = 0, remote = 0;
+  for(const l of LANGS){
+    const st = await probeLangPack(l.tess);
+    if(st === 'local') local++; else remote++;
+  }
+  el.textContent = `本机已就绪 ${local} 种，其余 ${remote} 种首次使用时会自动下载（约 0.5–3 MB/种，之后缓存在浏览器中，可点右侧按钮全部预下载）`;
+}
+// 主动把所有语言包拉到本地 tessdata 目录，之后离线也能翻译
+async function downloadAllLangPacks(){
+  const btn = $('#btn-tr-download');
+  const el = $('#set-tr-packs');
+  if(btn) btn.disabled = true;
+  let ok = 0, fail = 0;
+  for(const l of LANGS){
+    if(l.tess === 'chi_sim' || l.tess === 'eng'){ ok++; continue; }
+    if(el) el.textContent = `正在下载 ${l.name} 语言包…（${ok+fail+1}/${LANGS.length}）`;
+    try{
+      const res = await fetch(`${tessLangBase(l.tess)}/${l.tess}.traineddata.gz`);
+      if(!res.ok) throw new Error('HTTP '+res.status);
+      const buf = await res.arrayBuffer();
+      // 写入本机 tessdata 目录，之后 OCR 直接走同源，不再依赖网络
+      const w = await fetch('/api/save-tessdata?lang=' + encodeURIComponent(l.tess), {
+        method:'POST', headers:{'Content-Type':'application/octet-stream'}, body:buf
+      });
+      if(!w.ok) throw new Error('写入失败 HTTP '+w.status);
+      packState.set(l.tess, 'local');
+      ok++;
+    }catch(e){ fail++; }
+  }
+  if(btn) btn.disabled = false;
+  if(el) el.textContent = `语言包下载完成：成功 ${ok} 种${fail?`，失败 ${fail} 种（可重试）`:''}`;
+  toast(fail ? `语言包：成功 ${ok} 种，失败 ${fail} 种` : `全部 ${ok} 种语言包已就绪`, fail?'':'ok');
+  return { ok, fail };
+}
+
+/* ---- 翻译结果面板 ---- */
+// 翻译结束后的统一提示：把"没翻出来的条目"和"原文本来就是目标语言"讲清楚，
+// 否则用户只会看到一段与原文一样的文字，以为翻译功能坏了。
+function notifyTranslateResult(res, replaced){
+  if(res.sameLang){ toast('识别到的原文已经是目标语言，无需翻译（可在设置里改目标语言）','err'); return; }
+  toast(replaced ? `已翻译 ${res.blocks.length} 处文字并原位替换` : `已翻译 ${res.blocks.length} 处文字`,'ok');
+  if(res.sameCount) toast(`${res.sameCount} 条文字未能翻出译文（原文可能已是目标语言或属专有名词），可改用大模型翻译`, 'err');
+}
+function trProgressText(p){
+  if(!p) return '准备中…';
+  if(p.phase === 'ocr') return `正在识别原文… ${p.pct||0}%`;
+  if(p.phase === 'translate') return `正在翻译… ${p.done||0}/${p.total||0}`;
+  return '处理中…';
+}
+function openTranslatePanel({ blocks, canvas, words, from, to, detectedFrom, onRetarget, onEditBlock }){
+  // 自动检测时把"实际识别出的语种"显示出来，用户能立刻看出有没有判错，而不是只看到一个笼统的「自动检测」
+  const fromLabel = (!from || from === 'auto')
+    ? (detectedFrom && LANG_MAP[detectedFrom] ? `自动检测（${LANG_MAP[detectedFrom].name}）` : '自动检测')
+    : langOf(from).name;
+  const box = openModal({
+    title:`截图翻译 · ${fromLabel} → ${langOf(to).name}`,
+    wide:true,
+    actions:[{label:'关闭', cls:'ghost'}]
+  });
+  const body = box.el.querySelector('.m-body');
+
+  const bar = document.createElement('div');
+  bar.style.cssText = 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px';
+
+  const selFrom = document.createElement('select');
+  const selTo = document.createElement('select');
+  const fill = (sel, val)=>{
+    sel.innerHTML = '';
+    if(sel === selFrom){ const o=document.createElement('option'); o.value='auto'; o.textContent='自动检测'; sel.appendChild(o); }
+    LANGS.forEach(l=>{ const o=document.createElement('option'); o.value=l.code; o.textContent=`${l.flag} ${l.name}`; sel.appendChild(o); });
+    sel.value = val;
+  };
+  fill(selFrom, from); fill(selTo, to);
+  const swap = document.createElement('button');
+  swap.className = 'ghost'; swap.textContent = '⇄ 互换';
+  swap.onclick = ()=>{ if(selFrom.value==='auto') return toast('自动检测无法作为目标语言','err'); const a=selFrom.value; selFrom.value=selTo.value; selTo.value=a; };
+  const redo = document.createElement('button');
+  redo.className = 'primary'; redo.textContent = '重新翻译';
+  redo.onclick = ()=>{ if(onRetarget) onRetarget(selFrom.value, selTo.value); };
+
+  // 呈现方式切换：不同截图适合的样式不同，让用户当场对比着挑
+  const selStyle = document.createElement('select');
+  [['overlay','原位替换'],['band','半透明底条'],['text','仅对照文本']].forEach(([v,label])=>{
+    const o=document.createElement('option'); o.value=v; o.textContent=label; selStyle.appendChild(o);
+  });
+  selStyle.value = S.trMode;
+  selStyle.onchange = ()=>{ S.trMode = selStyle.value; saveSettings(); if(onRetarget) onRetarget(selFrom.value, selTo.value); };
+
+  bar.append(selFrom, selTo, swap, selStyle, redo);
+  body.appendChild(bar);
+
+  const grid = document.createElement('div');
+  grid.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start';
+  if(canvas){
+    const imgWrap = document.createElement('div');
+    const im = document.createElement('img');
+    im.style.cssText = 'width:100%;border-radius:10px;border:1px solid var(--line2);background:#0b0e14';
+    im.src = canvas.toDataURL();
+    imgWrap.appendChild(im);
+    const tip = document.createElement('div');
+    tip.style.cssText = 'font-size:11px;color:var(--dim);margin-top:6px';
+    tip.textContent = '左侧为原位替换效果；点「保存到编辑器」可继续标注或下载';
+    imgWrap.appendChild(tip);
+    grid.appendChild(imgWrap);
+  }
+
+  const listWrap = document.createElement('div');
+  listWrap.style.cssText = 'max-height:52vh;overflow:auto;display:flex;flex-direction:column;gap:8px';
+  if(!blocks.length){
+    const e = document.createElement('div');
+    e.style.cssText = 'color:var(--dim);font-size:13px';
+    e.textContent = '没有识别到可翻译的文字。可尝试更换原文语言，或提高「OCR 识别精度上限」。';
+    listWrap.appendChild(e);
+  }
+  blocks.forEach((b,i)=>{
+    const row = document.createElement('div');
+    row.style.cssText = 'background:#10141d;border:1px solid var(--line2);border-radius:10px;padding:9px 11px';
+    const src = document.createElement('div');
+    src.style.cssText = 'font-size:12px;color:var(--dim);line-height:1.5;margin-bottom:5px;word-break:break-word';
+    src.textContent = b.text;
+
+    const dst = document.createElement('div');
+    dst.style.cssText = 'font-size:14px;line-height:1.6;word-break:break-word;cursor:text';
+    dst.textContent = b.translated;
+    // 译文可直接编辑：机器翻译难免有出入，改完同步回图片
+    dst.contentEditable = 'true';
+    dst.onblur = ()=>{
+      const v = dst.textContent.trim();
+      if(v !== b.translated){
+        b.translated = v;
+        if(onEditBlock) onEditBlock(i, v);
+      }
+    };
+    row.append(src, dst);
+    listWrap.appendChild(row);
+  });
+  grid.appendChild(listWrap);
+  body.appendChild(grid);
+
+  const acts = box.el.querySelector('.m-actions');
+  const copyAll = document.createElement('button');
+  copyAll.className = 'secondary'; copyAll.textContent = '复制全部译文';
+  copyAll.onclick = ()=>{
+    const t = blocks.map(b=>b.translated).filter(Boolean).join('\n');
+    navigator.clipboard.writeText(t).then(()=>toast('已复制全部译文','ok')).catch(()=>toast('复制失败','err'));
+  };
+  const copyPairs = document.createElement('button');
+  copyPairs.className = 'ghost'; copyPairs.textContent = '复制原文对照';
+  copyPairs.onclick = ()=>{
+    const t = blocks.map(b=>`${b.text}\n→ ${b.translated}`).join('\n\n');
+    navigator.clipboard.writeText(t).then(()=>toast('已复制对照文本','ok')).catch(()=>toast('复制失败','err'));
+  };
+  acts.prepend(copyPairs, copyAll);
+  return box;
+}
+
+/* ---- 编辑器内的翻译动作 ---- */
+async function aiTranslateEditor(){
+  if(trBusy) return toast('翻译正在进行中…');
+  if(!editorOpen) return toast('请先截取一张图片','err');
+  trBusy = true;
+  let box = null, cancelled = false;
+  try{
+    const from = S.trFrom, to = S.trTo;
+    // 进度弹窗：翻译要联网、OCR 也要时间，没有反馈用户会以为卡死
+    box = openModal({
+      title:'截图翻译',
+      actions:[{label:'取消', cls:'ghost', onClick:close=>{ cancelled = true; close(); }}],
+      onClose:()=>{ cancelled = true; }
+    });
+    const hint = document.createElement('div');
+    hint.style.cssText = 'font-size:13px;color:var(--muted);line-height:1.8';
+    hint.textContent = '准备中…';
+    const sub = document.createElement('div');
+    sub.style.cssText = 'font-size:11px;color:var(--dim);margin-top:8px;line-height:1.7';
+    sub.textContent = '识别在本机完成；只有识别出的文字会发送给翻译服务。首次使用某语言会自动下载语言包。';
+    box.el.querySelector('.m-body').append(hint, sub);
+
+    const controller = new AbortController();
+    const srcSnapshot = snapshotCanvas(ecv);
+    const res = await translateCanvas(srcSnapshot, {
+      from, to, engine:S.trEngine, mode:S.trMode, signal:controller.signal,
+      onProgress: p=>{ if(!cancelled) hint.textContent = trProgressText(p); }
+    });
+    if(cancelled) return;
+    box.close(); box = null;
+
+    if(res.empty){
+      toast(res.sameLang ? '识别到的原文已经是目标语言，无需翻译（可在设置里改目标语言）'
+                         : '未识别到可翻译的文字，可尝试更换原文语言','err');
+      return;
+    }
+
+    const showResult = (canvas, blocks, fromCode, toCode)=>{
+      const panel = openTranslatePanel({
+        blocks, canvas, words:res.words, from:fromCode, to:toCode, detectedFrom:res.fromCode,
+        onRetarget: (f,t)=>{ panelClose(); S.trFrom=f; S.trTo=t; saveSettings(); aiTranslateEditor(); },
+        onEditBlock: ()=>{ reRender(); }
+      });
+      panelClose = ()=>panel.close();
+      function reRender(){
+        // 用户改了某条译文：按当前 blocks 重画一次，并同步回编辑器
+        const cv = renderTranslatedCanvas(srcSnapshot, blocks, { fontFamily:S.trFont, style:S.trMode });
+        const im = panel.el.querySelector('img');
+        if(im) im.src = cv.toDataURL();
+        pendingTranslated = { canvas: cv, blocks };
+      }
+    };
+    let panelClose = ()=>{};
+    showResult(res.canvas, res.blocks, from, to);
+    pendingTranslated = { canvas: res.canvas, blocks: res.blocks };
+
+    // 原位替换结果直接写回编辑器画布，用户可以接着标注/保存
+    if(res.canvas){
+      const img = new Image();
+      await new Promise(r=>{ img.onload=r; img.onerror=r; img.src = res.canvas.toDataURL(); });
+      pushState();
+      ecv.width = img.width; ecv.height = img.height;
+      ov.width = img.width; ov.height = img.height;
+      ecv.getContext('2d').drawImage(img, 0, 0);
+      ov.getContext('2d').clearRect(0,0,ov.width,ov.height);
+      syncBase();
+      notifyTranslateResult(res, true);
+    }else{
+      notifyTranslateResult(res, false);
+    }
+  }catch(e){
+    if(box) box.close();
+    if(!cancelled) toast(e.message || '翻译失败','err');
+  }finally{
+    trBusy = false;
+  }
+}
+let pendingTranslated = null;
+// 复制当前画布快照：翻译过程中用户可能继续编辑，用快照保证坐标一致
+function snapshotCanvas(src){
+  const cv = document.createElement('canvas');
+  cv.width = src.width; cv.height = src.height;
+  cv.getContext('2d').drawImage(src, 0, 0);
+  return cv;
+}
+
+const SENS_PATTERNS = [
+  ['手机号', /1[3-9]\d{9}/],
+  ['身份证号', /\d{17}[\dXx]/],
+  ['银行卡号', /\d{16,19}/],
+  ['邮箱', /[\w.+-]+@[\w-]+(?:\.[\w-]+)+/],
+  ['网址', /https?:\/\/[^\s"'<>]+/],
+  ['API 密钥', /(?:sk|pk)[-_][A-Za-z0-9]{16,}/i]
+];
+function scanSensitive(words){
+  const hits=[];
+  for(let i=0;i<words.length;i++){
+    for(let len=1; len<=4 && i+len<=words.length; len++){
+      let joined='', segs=[];
+      for(let j=0;j<len;j++){ const t=words[i+j].text.replace(/\s+/g,''); if(!t) break; joined+=t; segs.push(words[i+j]); }
+      if(!joined) continue;
+      for(const [type,re] of SENS_PATTERNS){
+        const m=joined.match(re);
+        if(m && m[0].length>=6){
+          const b=segs.reduce((a,w)=>union(a,w.bbox), null);
+          if(b) hits.push({type, value:m[0], bbox:b, conf:Math.min(...segs.map(w=>w.conf))});
+        }
+      }
+    }
+  }
+  const merged=[];
+  for(const h of hits){
+    const dup=merged.find(x=>x.type===h.type && overlap(x.bbox,h.bbox)>0.5);
+    if(dup) dup.value = dup.value.length>=h.value.length?dup.value:h.value;
+    else merged.push(h);
+  }
+  return merged.sort((a,b)=>b.conf-a.conf);
+}
+function union(a,b){
+  if(!a) return Object.assign({},b);
+  return {x0:Math.min(a.x0,b.x0), y0:Math.min(a.y0,b.y0), x1:Math.max(a.x1,b.x1), y1:Math.max(a.y1,b.y1)};
+}
+function clampBox(b, w, h){
+  const x0=Math.max(0,Math.min(b.x0,w)), y0=Math.max(0,Math.min(b.y0,h));
+  const x1=Math.max(0,Math.min(b.x1,w)), y1=Math.max(0,Math.min(b.y1,h));
+  return {x0, y0, x1:Math.max(x1,x0+1), y1:Math.max(y1,y0+1)};
+}
+function maskValue(v){
+  const s=String(v||'');
+  if(s.length<=3) return s;
+  if(s.length<=8) return s.slice(0,2)+'*'.repeat(s.length-3)+s.slice(-1);
+  return s.slice(0,3)+'*'.repeat(Math.min(6,s.length-6))+s.slice(-3);
+}
+function overlap(a,b){
+  const w=Math.min(a.x1,b.x1)-Math.max(a.x0,b.x0);
+  const h=Math.min(a.y1,b.y1)-Math.max(a.y0,b.y0);
+  if(w<=0||h<=0) return 0;
+  const inter=w*h, small=Math.min((a.x1-a.x0)*(a.y1-a.y0),(b.x1-b.x0)*(b.y1-b.y0));
+  return small? inter/small : 0;
+}
+function blurRect(ctx, src, x, y, w, h, r=20){
+  ctx.save();
+  ctx.beginPath();
+  if(ctx.roundRect) ctx.roundRect(x,y,w,h,Math.min(10,r)); else ctx.rect(x,y,w,h);
+  ctx.clip();
+  ctx.filter='blur('+r+'px)';
+  ctx.drawImage(src,0,0);
+  ctx.restore();
+}
+function redactCanvas(cv, hits){
+  cv = toCanvas(cv);                 // 同样要能接 Image
+  const out=document.createElement('canvas');
+  out.width=cv.width; out.height=cv.height;
+  const c=out.getContext('2d');
+  c.drawImage(cv,0,0);
+  for(const h of hits){
+    const b=clampBox(h.bbox, cv.width, cv.height);
+    const pad=Math.max(6, Math.round((b.x1-b.x0)*0.14));
+    const x=b.x0-pad, y=b.y0-pad*0.6, w=(b.x1-b.x0)+pad*2, hh=(b.y1-b.y0)+pad*1.2;
+    c.save(); c.beginPath();
+    // 与 blurRect 保持一致：老浏览器可能没有 roundRect，退化成直角矩形而不是直接报错
+    if(c.roundRect) c.roundRect(x,y,w,hh,Math.min(12,pad)); else c.rect(x,y,w,hh);
+    c.clip();
+    c.filter='blur('+Math.max(14,pad)+'px)';
+    c.drawImage(cv,0,0);
+    c.restore();
+  }
+  return out;
+}
+
+function viewNav(name){
+  $$('.nav-item').forEach(b=>b.classList.toggle('active', b.dataset.view===name));
+  $$('.view').forEach(v=>v.classList.toggle('active', v.id==='view-'+name));
+  if(name==='ai') refreshSumSelect();     // 每次进来都刷新，避免新录的录屏在列表里看不到
+}
+function screenApiError(){
+  if(!window.isSecureContext) return '当前不是安全上下文（需通过 https 或 http://localhost 访问）';
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) return '当前浏览器不支持屏幕捕获接口（getDisplayMedia）';
+  return null;
+}
+$$('.nav-item').forEach(b=>b.onclick=()=>viewNav(b.dataset.view));
+
+/* ============ 截屏 ============ */
+let capturing=false;
+const delayBtns = $$('.delay-btn');
+let delaySec=3;
+delayBtns.forEach(b=>b.onclick=()=>{ delaySec=+b.dataset.sec; delayBtns.forEach(x=>x.classList.toggle('active',x===b)); });
+$('#btn-full-shot').onclick=()=>doCapture('full');
+$('#btn-region-shot').onclick=()=>doCapture('region');
+$('#btn-delay-shot').onclick=()=>doCapture('delay');
+
+function countdown(sec){
+  return new Promise(res=>{
+    const el=$('#countdown');
+    el.classList.remove('hidden');
+    el.textContent=sec;
+    const t=setInterval(()=>{
+      sec--;
+      if(sec<=0){ clearInterval(t); el.classList.add('hidden'); res(); }
+      else el.textContent=sec;
+    },1000);
+  });
+}
+async function doCapture(mode){
+  if(capturing) return;
+  const err=screenApiError();
+  if(err){
+    toast('无法截屏：'+err, 'err');
+    if(location.protocol==='file:'){
+      openModal({title:'检测到以 file:// 方式打开', body:`<b>截图功能需要安全上下文</b>（http://localhost 或 https）才能调用系统屏幕接口。<br><br>你当前是以 <code>file://</code> 直接打开文件的，浏览器出于安全策略禁用了屏幕捕获。<br><br><b>解决方法（推荐）：</b><br>1. 双击运行本目录里的 <b>启动助手.bat</b>，它会自动起服务并打开正确地址<br>2. 或自行执行 <code>python -m http.server 8787</code>，再访问 <code>http://127.0.0.1:8787/ai-capture-assistant.html</code><br><br><b>提示：</b>如果执行 python 后窗口一闪而过，多半是装成了「应用商店版」的占位程序。请改用 Node：<code>npx --yes http-server -p 8787 -a 127.0.0.1</code>，或到 python.org 安装正式版并勾选 Add python.exe to PATH。`, actions:[{label:'我知道了', cls:'primary'}]});
+    }
+    return;
+  }
+  capturing=true;
+  try{
+    if(mode==='delay') await countdown(delaySec);
+    let stream;
+    try{
+      stream = await navigator.mediaDevices.getDisplayMedia({video:{frameRate:{ideal:30}}});
+    }catch(e){
+      if(e.name!=='NotAllowedError') toast('截屏失败：'+e.message, 'err');
+      else toast('已取消截屏');
+      return;
+    }
+    const v=document.createElement('video');
+    v.srcObject=stream; v.muted=true;
+    await v.play();
+    const w=v.videoWidth||1280, h=v.videoHeight||720;
+    const cv=document.createElement('canvas');
+    cv.width=w; cv.height=h;
+    cv.getContext('2d').drawImage(v,0,0,w,h);
+    stream.getTracks().forEach(t=>t.stop());
+    saveShot(cv);
+    if(mode==='region') openRegionSelect(cv); else openEditor(cv);
+  }finally{ capturing=false; }
+}
+async function saveShot(cv, name){
+  const format=S.shotFormat;
+  const dataUrl = format==='image/jpeg'
+    ? cv.toDataURL('image/jpeg', S.shotQuality)
+    : cv.toDataURL('image/png');
+  await dbAdd('shots', {id:uid(), name:name||(`截图_${fmtDate(new Date())}.${format==='image/jpeg'?'jpg':'png'}`), dataUrl, w:cv.width, h:cv.height, date:Date.now()});
+  renderHistory();
+}
+
+/* ---- 区域选择 ---- */
+let regionState=null;
+function openRegionSelect(cv){
+  const mask=$('#region-mask');
+  mask.classList.remove('hidden');
+  const rc=$('#region-canvas');
+  const scale=Math.min((window.innerWidth*0.96)/cv.width, (window.innerHeight*0.9)/cv.height);
+  const dw=Math.round(cv.width*scale), dh=Math.round(cv.height*scale);
+  rc.width=dw; rc.height=dh;
+  const c=rc.getContext('2d');
+  c.drawImage(cv,0,0,dw,dh);
+  const base=rc.toDataURL();
+  regionState={cv, scale, dw, dh, base, sel:null, drag:false, img:new Image()};
+  regionState.img.src=base;
+  const drawSel=()=>{
+    c.clearRect(0,0,dw,dh);
+    c.drawImage(regionState.img,0,0,dw,dh);
+    if(regionState.sel){
+      const s=regionState.sel;
+      c.fillStyle='rgba(0,0,0,.45)';
+      c.fillRect(0,0,dw,s.y0); c.fillRect(0,s.y1,dw,dh-s.y1);
+      c.fillRect(0,s.y0,s.x0,s.y1-s.y0); c.fillRect(s.x1,s.y0,dw-s.x1,s.y1-s.y0);
+      c.strokeStyle='#4f7cff'; c.lineWidth=2; c.setLineDash([6,4]);
+      c.strokeRect(s.x0+1,s.y0+1,s.x1-s.x0-2,s.y1-s.y0-2);
+      c.setLineDash([]);
+    }
+  };
+  const onDown=e=>{ const p=pos(e); regionState.drag=true; regionState.sel={x0:p.x,y0:p.y,x1:p.x,y1:p.y}; drawSel(); };
+  const onMove=e=>{ if(!regionState.drag) return; const p=pos(e); regionState.sel.x1=p.x; regionState.sel.y1=p.y; drawSel(); };
+  const onUp=()=>{
+    regionState.drag=false;
+    const s=regionState.sel;
+    if(!s){ mask.classList.add('hidden'); regionState=null; cleanup(); return; }
+    // 注意：必须在清空 regionState 之前取走 cv / scale，否则下面读的是 null
+    const srcCv=cv, sc=scale;
+    const x=Math.min(s.x0,s.x1), y=Math.min(s.y0,s.y1), w=Math.abs(s.x1-s.x0), h=Math.abs(s.y1-s.y0);
+    mask.classList.add('hidden');
+    regionState=null;
+    cleanup();
+    if(w<8||h<8){ toast('选区过小，已取消'); return; }
+    const ox=Math.max(0,Math.round(x/sc)), oy=Math.max(0,Math.round(y/sc));
+    const ow=Math.max(2,Math.round(w/sc)), oh=Math.max(2,Math.round(h/sc));
+    const out=document.createElement('canvas');
+    out.width=ow; out.height=oh;
+    out.getContext('2d').drawImage(srcCv, ox,oy,Math.min(ow,srcCv.width-ox),Math.min(oh,srcCv.height-oy), 0,0,ow,oh);
+    openEditor(out);
+  };
+  const pos=e=>{ const r=rc.getBoundingClientRect(); return {x:(e.clientX-r.left)*(rc.width/r.width), y:(e.clientY-r.top)*(rc.height/r.height)}; };
+  const onKey=e=>{ if(e.key==='Escape'){ mask.classList.add('hidden'); regionState=null; cleanup(); } };
+  const cleanup=()=>{ mask.removeEventListener('pointerdown',onDown); mask.removeEventListener('pointermove',onMove); mask.removeEventListener('pointerup',onUp); window.removeEventListener('keydown',onKey); };
+  mask.addEventListener('pointerdown',onDown);
+  mask.addEventListener('pointermove',onMove);
+  mask.addEventListener('pointerup',onUp);
+  window.addEventListener('keydown',onKey);
+  $('#region-cancel').onclick=()=>{ mask.classList.add('hidden'); regionState=null; cleanup(); };
+}
+
+/* ---- 编辑器 ---- */
+const ecv=$('#editor-canvas'), ov=$('#editor-overlay');
+let editorOpen=false, curTool='pen', strokeColor='#ff5252', strokeSize=5;
+let undoStack=[], redoStack=[];
+let baseImg=null, dragState=null, textPendingPos=null;
+
+function openEditor(src){
+  viewNav('capture');
+  $('#capture-idle').classList.add('hidden');
+  $('#editor-wrap').classList.remove('hidden');
+  const c=ecv.getContext('2d');
+  ecv.width=src.width; ecv.height=src.height;
+  ov.width=src.width; ov.height=src.height;
+  c.drawImage(src,0,0);
+  syncBase();
+  undoStack=[]; redoStack=[];
+  // 每张新图都回到干净的起点：画布尺寸已变，旧的选区/拖拽状态继续用会画到错误坐标上
+  dragState=null; textPendingPos=null;
+  ov.getContext('2d').clearRect(0,0,ov.width,ov.height);
+  editorOpen=true;
+  setTool('pen');
+}
+function syncBase(){
+  const img=new Image();
+  img.src=ecv.toDataURL();
+  baseImg=img;
+}
+function pushState(){
+  undoStack.push(ecv.toDataURL());
+  if(undoStack.length>20) undoStack.shift();
+  redoStack=[];
+}
+function restoreFromDataURL(d){
+  const img=new Image();
+  img.onload=()=>{
+    ecv.width=img.width; ecv.height=img.height;
+    ov.width=img.width; ov.height=img.height;
+    ecv.getContext('2d').drawImage(img,0,0);
+    ov.getContext('2d').clearRect(0,0,ov.width,ov.height);
+    // 关键：撤销/重做后必须同步 baseImg 并清掉进行中的拖拽。
+    // 否则后续的马赛克、打码框、滤镜都还在用上一版画面作源，
+    // 而且快照若是裁剪前的尺寸，坐标映射会对不上。
+    syncBase();
+    dragState=null;
+  };
+  img.src=d;
+}
+function undo(){ if(!undoStack.length) return; redoStack.push(ecv.toDataURL()); restoreFromDataURL(undoStack.pop()); }
+function redo(){ if(!redoStack.length) return; undoStack.push(ecv.toDataURL()); restoreFromDataURL(redoStack.pop()); }
+
+function setTool(t){ curTool=t; $$('.tbtn[data-tool]').forEach(b=>b.classList.toggle('active',b.dataset.tool===t)); }
+$$('.tbtn[data-tool]').forEach(b=>b.onclick=()=>setTool(b.dataset.tool));
+$$('.tbtn[data-act]').forEach(b=>b.onclick=()=>{
+  const a=b.dataset.act;
+  if(a==='undo') undo();
+  else if(a==='redo') redo();
+  else if(a==='copy') copyEditor();
+  else if(a==='download') downloadEditor();
+  else if(a==='finish') finishEditor();
+  else if(a==='ai-ocr') aiOcrEditor();
+  else if(a==='ai-redact') aiRedactEditor();
+  else if(a==='ai-name') aiNameEditor();
+  else if(a==='translate') aiTranslateEditor();
+});
+$$('.tbtn[data-filter]').forEach(b=>b.onclick=()=>applyFilter(b.dataset.filter));
+$('#ed-color').oninput=e=>strokeColor=e.target.value;
+$('#ed-size').oninput=e=>{ strokeSize=+e.target.value; $('#ed-size-lbl').textContent=strokeSize; };
+
+function canvasPos(e){
+  const r=ecv.getBoundingClientRect();
+  return {x:(e.clientX-r.left)*ecv.width/r.width, y:(e.clientY-r.top)*ecv.height/r.height};
+}
+function applyFilter(kind){
+  if(!editorOpen) return;
+  pushState();
+  const c=ecv.getContext('2d');
+  let f='';
+  if(kind==='enhance') f='contrast(1.22) saturate(1.2) brightness(1.04)';
+  else if(kind==='bw') f='grayscale(1) contrast(1.1)';
+  c.save();
+  if(f){ c.filter=f; }
+  c.clearRect(0,0,ecv.width,ecv.height);
+  c.drawImage(baseImg,0,0);
+  c.restore();
+  syncBase();
+  if(kind==='raw'){ toast('已还原到原始画面'); }
+}
+function drawMosaicDot(x,y,r){
+  const c=ecv.getContext('2d');
+  const px=Math.max(0,Math.round(x-r)), py=Math.max(0,Math.round(y-r));
+  const w=Math.min(ecv.width-px, Math.round(r*2)), h=Math.min(ecv.height-py, Math.round(r*2));
+  if(w<2||h<2) return;
+  c.save();
+  // 以「当前画面」为源做模糊再贴回，既保证马赛克连续，又不会把整张原图重绘回来
+  c.filter='blur('+Math.min(24,Math.max(5,r*0.9)).toFixed(1)+'px)';
+  c.drawImage(ecv, px,py,w,h, px,py,w,h);
+  c.restore();
+}
+
+ecv.addEventListener('pointerdown',e=>{
+  if(!editorOpen) return;
+  const p=canvasPos(e);
+  e.preventDefault();
+  if(curTool==='pen'||curTool==='mosaic'){
+    pushState();
+    dragState={kind:curTool, last:p, drawing:true};
+    const c=ecv.getContext('2d');
+    if(curTool==='pen'){
+      c.strokeStyle=strokeColor; c.lineWidth=strokeSize; c.lineCap='round'; c.lineJoin='round';
+      c.beginPath(); c.moveTo(p.x,p.y); c.lineTo(p.x+0.1,p.y+0.1); c.stroke();
+    } else drawMosaicDot(p.x,p.y,Math.max(6,strokeSize*1.2));
+    ecv.setPointerCapture(e.pointerId);
+  } else if(curTool==='arrow'||curTool==='rect'||curTool==='crop'||curTool==='blurbox'){
+    pushState();
+    dragState={kind:curTool, start:p, last:p, drawing:true};
+    ecv.setPointerCapture(e.pointerId);
+  } else if(curTool==='text'){
+    textPendingPos=p;
+    askText({title:'添加文字标注', label:'输入文字内容（支持多行）：', value:'', placeholder:'在此输入文字'}).then(v=>{
+      const txt=String(v==null?'':v).trim();
+      if(!txt) return;
+      pushState();
+      const c=ecv.getContext('2d');
+      const size=Math.max(14, strokeSize*4);
+      c.font=`700 ${size}px "Microsoft YaHei",sans-serif`;
+      c.textBaseline='top';                       // 默认是 alphabetic，文字会整体浮到点击位置上方约一行
+      c.lineWidth=Math.max(3,size*0.12); c.strokeStyle='rgba(0,0,0,.85)'; c.lineJoin='round';
+      txt.split(/\r?\n/).forEach((line,i)=>{
+        const ty=textPendingPos.y+i*size*1.25;
+        c.strokeText(line, textPendingPos.x, ty);
+        c.fillStyle=strokeColor;
+        c.fillText(line, textPendingPos.x, ty);
+      });
+      c.textBaseline='alphabetic';
+      syncBase();                                  // 让后续打码/马赛克能吃到这段文字
+    });
+  }
+});
+ecv.addEventListener('pointermove',e=>{
+  if(!dragState||!dragState.drawing) return;
+  const p=canvasPos(e);
+  const st=dragState;
+  if(st.kind==='pen'){
+    const c=ecv.getContext('2d');
+    c.strokeStyle=strokeColor; c.lineWidth=strokeSize; c.lineCap='round'; c.lineJoin='round';
+    c.beginPath(); c.moveTo(st.last.x,st.last.y); c.lineTo(p.x,p.y); c.stroke();
+    st.last=p;
+  } else if(st.kind==='mosaic'){
+    const r=Math.max(6,strokeSize*1.2);
+    const steps=Math.max(1,Math.ceil(Math.hypot(p.x-st.last.x,p.y-st.last.y)/r));
+    for(let i=1;i<=steps;i++) drawMosaicDot(st.last.x+(p.x-st.last.x)*i/steps, st.last.y+(p.y-st.last.y)*i/steps, r);
+    st.last=p;
+  } else {
+    st.last=p;
+    previewShape(st);
+  }
+});
+function previewShape(st){
+  const c=ov.getContext('2d');
+  c.clearRect(0,0,ov.width,ov.height);
+  if(st.kind==='arrow'){
+    c.strokeStyle=strokeColor; c.lineWidth=strokeSize; c.lineCap='round';
+    c.beginPath(); c.moveTo(st.start.x,st.start.y); c.lineTo(st.last.x,st.last.y); c.stroke();
+    drawArrowHead(c, st.start, st.last, strokeColor, strokeSize);
+  } else if(st.kind==='rect'){
+    c.strokeStyle=strokeColor; c.lineWidth=strokeSize;
+    c.strokeRect(Math.min(st.start.x,st.last.x),Math.min(st.start.y,st.last.y),Math.abs(st.last.x-st.start.x),Math.abs(st.last.y-st.start.y));
+  } else if(st.kind==='blurbox'){
+    c.strokeStyle=strokeColor; c.lineWidth=strokeSize; c.setLineDash([6,4]);
+    c.strokeRect(Math.min(st.start.x,st.last.x),Math.min(st.start.y,st.last.y),Math.abs(st.last.x-st.start.x),Math.abs(st.last.y-st.start.y));
+    c.setLineDash([]);
+  } else if(st.kind==='crop'){
+    c.strokeStyle='#4f7cff'; c.lineWidth=2; c.setLineDash([6,4]);
+    c.strokeRect(Math.min(st.start.x,st.last.x),Math.min(st.start.y,st.last.y),Math.abs(st.last.x-st.start.x),Math.abs(st.last.y-st.start.y));
+    c.setLineDash([]);
+  }
+}
+ecv.addEventListener('pointerup',e=>{
+  if(!dragState) return;
+  const st=dragState;
+  dragState=null;
+  if(st.kind==='arrow'){
+    const c=ecv.getContext('2d');
+    c.strokeStyle=strokeColor; c.lineWidth=strokeSize; c.lineCap='round';
+    c.beginPath(); c.moveTo(st.start.x,st.start.y); c.lineTo(st.last.x,st.last.y); c.stroke();
+    drawArrowHead(c, st.start, st.last, strokeColor, strokeSize);
+  } else if(st.kind==='rect'){
+    const c=ecv.getContext('2d');
+    c.strokeStyle=strokeColor; c.lineWidth=strokeSize;
+    c.strokeRect(Math.min(st.start.x,st.last.x),Math.min(st.start.y,st.last.y),Math.abs(st.last.x-st.start.x),Math.abs(st.last.y-st.start.y));
+  } else if(st.kind==='blurbox'){
+    const x=Math.min(st.start.x,st.last.x), y=Math.min(st.start.y,st.last.y);
+    const w=Math.max(4,Math.abs(st.last.x-st.start.x)), h=Math.max(4,Math.abs(st.last.y-st.start.y));
+    blurRect(ecv.getContext('2d'), baseImg, x,y,w,h, Math.max(14,strokeSize*2.5));
+  } else if(st.kind==='crop'){
+    const x=Math.min(st.start.x,st.last.x), y=Math.min(st.start.y,st.last.y);
+    const w=Math.abs(st.last.x-st.start.x), h=Math.abs(st.last.y-st.start.y);
+    if(w>10&&h>10){
+      const tmp=document.createElement('canvas');
+      tmp.width=w; tmp.height=h;
+      tmp.getContext('2d').drawImage(ecv,x,y,w,h,0,0,w,h);
+      ecv.width=w; ecv.height=h; ov.width=w; ov.height=h;
+      ecv.getContext('2d').drawImage(tmp,0,0);
+      syncBase();
+      toast(`已裁剪 ${Math.round(w)}×${Math.round(h)}`);
+    } else toast('选区过小');
+  }
+  ov.getContext('2d').clearRect(0,0,ov.width,ov.height);
+});
+function drawArrowHead(c, from, to, color, size){
+  const ang=Math.atan2(to.y-from.y,to.x-from.x);
+  const len=Math.max(10,size*2.6);
+  c.strokeStyle=color; c.lineWidth=size; c.fillStyle=color;
+  c.beginPath();
+  c.moveTo(to.x,to.y);
+  c.lineTo(to.x-len*Math.cos(ang-Math.PI/6), to.y-len*Math.sin(ang-Math.PI/6));
+  c.lineTo(to.x-len*Math.cos(ang+Math.PI/6), to.y-len*Math.sin(ang+Math.PI/6));
+  c.closePath();
+  c.fill();
+}
+
+function editorDataURL(){ return S.shotFormat==='image/jpeg' ? ecv.toDataURL('image/jpeg', S.shotQuality) : ecv.toDataURL('image/png'); }
+function extName(){ return S.shotFormat==='image/jpeg' ? 'jpg' : 'png'; }
+function copyEditor(){
+  const dataUrl=editorDataURL();
+  fetch(dataUrl).then(r=>r.blob()).then(blob=>{
+    if(navigator.clipboard && window.ClipboardItem){
+      return navigator.clipboard.write([new ClipboardItem({[blob.type]:blob})]);
+    }
+    return Promise.reject(new Error('浏览器不支持'));
+  }).then(()=>toast('已复制到剪贴板','ok')).catch(()=>toast('复制失败，请使用下载','err'));
+}
+async function downloadEditor(){
+  const name=await askName(`截图_${fmtDate(new Date())}.${extName()}`);
+  if(!name) return;
+  downloadDataURL(editorDataURL(), name);
+  toast('已下载：'+safeName(name),'ok');
+}
+async function finishEditor(){
+  await saveShot(ecv, `截图_${fmtDate(new Date())}.${extName()}`);
+  toast('已保存到历史记录','ok');
+  exitEditor();
+}
+function exitEditor(){
+  editorOpen=false;
+  $('#editor-wrap').classList.add('hidden');
+  $('#capture-idle').classList.remove('hidden');
+}
+function downloadDataURL(dataUrl, name){
+  const a=document.createElement('a');
+  a.href=dataUrl; a.download=safeName(name);
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
+async function aiOcrEditor(){
+  let box=null, cancelled=false;
+  try{
+    box=openModal({title:'AI 文字识别', wide:false, actions:[{label:'关闭', cls:'ghost'}], onClose:()=>{ cancelled=true; }});
+    const pre=document.createElement('pre');
+    pre.style.cssText='white-space:pre-wrap;max-height:45vh;overflow:auto;background:#10141d;border:1px solid var(--line2);border-radius:10px;padding:12px;font-size:13px;line-height:1.7';
+    const hint=document.createElement('div');
+    hint.style.cssText='font-size:12px;color:var(--dim);margin-bottom:8px';
+    hint.textContent='识别中…（首次识别需初始化模型，可能要几秒）';
+    const wrap=document.createElement('div');
+    wrap.append(hint, pre);
+    box.el.querySelector('.m-body').appendChild(wrap);
+    const {text, lines:ocrLines}=await ocrOnCanvas(ecv, {needBlocks:true, cb:m=>{ if(m.status==='recognizing text') hint.textContent='识别中 '+Math.round((m.progress||0)*100)+'%'; }});
+    if(cancelled) return;                 // 用户中途关掉了弹窗：文字照旧复制到剪贴板，不再往已销毁的节点里写
+    // 图片/照片/图标这类非文字区域会被 OCR 凭空造出字符，按行置信度挡掉，别把乱码显示给用户
+    const kept = filterOcrLines(ocrLines);
+    const clean = kept.length ? kept : cleanOcrOutput(text);
+    const shown = clean.join('\n');
+    pre.textContent = shown || '（未识别到文字）';
+    hint.textContent='识别完成，点击下方按钮可复制或自动打码';
+    const copyB=document.createElement('button');
+    copyB.className='secondary'; copyB.textContent='复制文字';
+    copyB.onclick=()=>{ navigator.clipboard.writeText(shown).then(()=>toast('已复制','ok')).catch(()=>toast('复制失败','err')); };
+    const redB=document.createElement('button');
+    redB.className='primary'; redB.textContent='✦ 自动打码敏感信息';
+    redB.onclick=()=>{ box.close(); aiRedactEditor(); };
+    box.el.querySelector('.m-actions').prepend(copyB, redB);
+  }catch(e){ if(box) box.close(); toast(e.message||'识别失败','err'); }
+}
+async function aiRedactEditor(){
+  toast('正在扫描敏感信息…');
+  try{
+    const {words}=await ocrOnCanvas(ecv, {needBlocks:true, cb:m=>{}});
+    const hits=scanSensitive(words);
+    if(!hits.length){ toast('未发现手机号 / 邮箱 / 身份证等敏感信息','ok'); return; }
+    const red=redactCanvas(ecv, hits);
+    openEditor(red);
+    toast(`已自动打码 ${hits.length} 处：`+Array.from(new Set(hits.map(h=>h.type))).join('、'),'ok');
+    const names=Array.from(new Set(hits.map(h=>h.type)));
+    openModal({title:'已打码 '+hits.length+' 处敏感信息', body:`类型：${names.join('、')}<br>示例值：${hits.slice(0,3).map(h=>maskValue(h.value)).join('、')}`,
+      actions:[{label:'知道了', cls:'primary'}]});
+  }catch(e){ toast(e.message||'打码失败','err'); }
+}
+async function aiNameEditor(){
+  toast('AI 正在分析画面内容生成文件名…');
+  try{
+    const {text}=await ocrOnCanvas(ecv, {maxSide:1000, cb:m=>{}});
+    const kw=topKeywords(text,3);
+    const name=(kw.length?kw.join('-'):'截图')+'_'+fmtDate(new Date())+'.'+extName();
+    const fn=await askName(name);
+    if(!fn) return;
+    downloadDataURL(editorDataURL(), fn);
+    toast('已下载：'+safeName(fn),'ok');
+  }catch(e){ toast(e.message||'命名失败，可手动输入文件名','err'); }
+}
+
+/* ============ 录屏 ============ */
+let recState=null;
+let curRecObj=null;   // 当前展示的录制记录（刚录完的）
+$('#btn-start-rec').onclick=startRecording;
+$('#btn-pause-rec').onclick=togglePause;
+$('#btn-stop-rec').onclick=stopRecording;
+$('#btn-play-rec').onclick=()=>{ if(!curRecObj) return toast('没有可播放的录制','err'); playBlob(curRecObj.blob, curRecObj.name); };
+$('#btn-dl-rec').onclick=async()=>{
+  if(!curRecObj) return toast('没有可下载的录制','err');
+  if(!curRecObj.blob) return toast('这段录制的视频数据已丢失，无法下载','err');
+  const n=await askName(curRecObj.name); if(!n) return;
+  downloadBlob(curRecObj.blob, n); toast('已下载：'+safeName(n),'ok');
+};
+$('#btn-summary-rec').onclick=()=>{
+  if(!curRecObj) return toast('没有可分析的录制','err');
+  summarizeBlob(curRecObj.blob, curRecObj.name, null, curRecObj).catch(e=>toast(e.message||'总结失败','err'));
+};
+$('#btn-new-rec').onclick=()=>{
+  $('#record-result').classList.add('hidden');
+  $('#record-idle').classList.remove('hidden');
+  curRecObj=null;                         // 清掉引用，避免下次误用上一段的记录
+};
+$('#btn-copy-summary').onclick=()=>{ const t=$('#sum-text').textContent; navigator.clipboard.writeText(t).then(()=>toast('已复制总结','ok')).catch(()=>toast('复制失败','err')); };
+// 关键修正：原先写的是 recState.recObj，而 recState 上根本没有这个字段，
+// 导致「保存到录制记录」实际写入的是 {} 空对象，总结既没保存又会污染历史列表。
+$('#btn-save-summary').onclick=async()=>{
+  const target=curRecObj;
+  if(!target||!target.id){ toast('没有可保存的录制记录','err'); return; }
+  target.summary=$('#sum-text').textContent;
+  await dbAdd('recs', target);   // 同 id 覆盖写回，不会新增重复条目
+  toast('总结已保存到该录制记录','ok');
+  renderHistory();
+};
+
+function pickMime(){
+  const cands=['video/mp4;codecs=avc1.42E01E,mp4a.40.2','video/mp4;codecs=avc1.42E01E','video/mp4','video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'];
+  return cands.find(c=>window.MediaRecorder && MediaRecorder.isTypeSupported(c))||'';
+}
+async function startRecording(){
+  if(recState&&recState.recording) return;
+  curRecObj=null;
+  const wantsSys=$('#opt-sys-audio').checked;
+  const wantsMic=$('#opt-mic').checked;
+  let screenStream;
+  try{
+    screenStream=await navigator.mediaDevices.getDisplayMedia({video:{frameRate:{ideal:+$('#opt-fps').value}}, audio:wantsSys?{echoCancellation:false}:false});
+  }catch(e){
+    if(e.name!=='NotAllowedError') toast('录制启动失败：'+e.message,'err');
+    return;
+  }
+  let micStream=null;
+  if(wantsMic){ try{ micStream=await navigator.mediaDevices.getUserMedia({audio:true}); }catch(e){ toast('无法获取麦克风，将仅录制系统声音'); } }
+  const tracks=[...screenStream.getVideoTracks()];
+  const audioTracks=[...screenStream.getAudioTracks()];
+  if(micStream) audioTracks.push(...micStream.getAudioTracks());
+  let finalStream=new MediaStream(tracks);
+  if(audioTracks.length){
+    if(audioTracks.length===1) finalStream.addTrack(audioTracks[0]);
+    else{
+      const ac=new AudioContext();
+      const dest=ac.createMediaStreamDestination();
+      audioTracks.forEach(t=>{ ac.createMediaStreamSource(new MediaStream([t])).connect(dest); });
+      finalStream.addTrack(dest.stream.getAudioTracks()[0]);
+      recState={ac, audioTracks};
+    }
+  }
+  const mime=pickMime();
+  if(!mime && !window.MediaRecorder){ toast('当前浏览器不支持 MediaRecorder，无法录屏','err'); return; }
+  const rec=new MediaRecorder(finalStream, mime?{mimeType:mime}:undefined);
+  const chunks=[];
+  let recBytes=0;
+  // 录屏时长基本不限，但内存是有限的：超过 500MB 主动收尾，避免浏览器崩掉后整段丢失
+  const MAX_REC_BYTES=500*1024*1024;
+  rec.ondataavailable=e=>{
+    if(!e.data.size) return;
+    chunks.push(e.data); recBytes+=e.data.size;
+    if(recBytes>MAX_REC_BYTES && rec.state!=='inactive'){
+      toast('录制体积已超过 500MB，自动停止并保存','err');
+      try{ rec.stop(); }catch(err){}
+    }
+  };
+  const startedAt=Date.now();
+  const ext=mime.startsWith('video/mp4')?'mp4':'webm';
+  const frames=[];
+  let lastPoster=null;
+  rec.onstop=async()=>{
+    clearInterval(tick);
+    clearInterval(frameInt);
+    screenStream.getTracks().forEach(t=>t.stop());
+    if(micStream) micStream.getTracks().forEach(t=>t.stop());
+    if(recState&&recState.ac) recState.ac.close();
+    const blob=new Blob(chunks,{type:rec.mimeType||'video/webm'});
+    const dur=(Date.now()-startedAt)/1000;
+    const name=`录制_${fmtDate(new Date())}.${ext}`;
+    const poster=lastPoster||(frames.length?frames[0].dataUrl:null);
+    // 视频本体也一起入库，这样刷新页面后仍能播放 / 下载 / 做总结；
+    // 代价是占用浏览器存储配额，失败时会明确提示（见 dbAdd），而不是假装存好了。
+    // frames 只保留时间点，缩略图已经是 dataURL，不需要重复存。
+    const obj={id:uid(), name, blob, date:Date.now(), dur, size:blob.size, poster, summary:null, frames:frames.slice(0,40).map(f=>({t:f.t}))};
+    recState={recording:false, blob, name};
+    curRecObj=obj;
+    const ok=await dbAdd('recs',obj);
+    renderHistory();
+    $('#record-live').classList.add('hidden');
+    $('#record-result').classList.remove('hidden');
+    $('#rec-meta').innerHTML=`文件名：${name}<br>时长：${fmtTS(dur)}　·　大小：${fmtSize(blob.size)}　·　格式：${ext.toUpperCase()}<br>${ok?'已保存到历史记录':'⚠ 未能写入历史记录（文件仍可下载，请先下载保存）'}`;
+    $('#summary-box').classList.add('hidden');
+    $('#btn-save-summary').disabled=true;
+    $('#sum-text').textContent='';
+    $('#rec-preview').srcObject=null;
+  };
+  rec.start(500);
+  const tick=setInterval(()=>{ $('#rec-timer').textContent=fmtTS((Date.now()-startedAt)/1000); },250);
+  const frameInt=setInterval(()=>{
+    const v=$('#rec-preview');
+    if(v.videoWidth>0){
+      const cw=480, ch=Math.max(2,Math.round(cw*v.videoHeight/v.videoWidth));
+      const cv=document.createElement('canvas');
+      cv.width=cw; cv.height=ch;
+      cv.getContext('2d').drawImage(v,0,0,cw,ch);
+      const d=cv.toDataURL('image/jpeg',0.6);
+      frames.push({t:(Date.now()-startedAt)/1000, dataUrl:d});
+      lastPoster=d;
+      if(frames.length>60) frames.shift();
+    }
+  }, (+$('#opt-keyframe').value)*1000);
+  const pv=$('#rec-preview');
+  pv.srcObject=finalStream;
+  try{ await pv.play(); }catch(e){}
+  recState={recording:true, recorder:rec, blob:null, name:`录制_${fmtDate(new Date())}.${ext}`};
+  $('#record-idle').classList.add('hidden');
+  $('#record-result').classList.add('hidden');
+  $('#record-live').classList.remove('hidden');
+  $('#rec-timer').textContent='00:00';
+  $('#rec-status').textContent='正在录制…';
+  $('#btn-pause-rec').textContent='暂停';
+}
+function togglePause(){
+  if(!recState||!recState.recorder) return;
+  const r=recState.recorder;
+  if(r.state==='recording'){ r.pause(); $('#btn-pause-rec').textContent='继续'; $('#rec-status').textContent='已暂停'; }
+  else if(r.state==='paused'){ r.resume(); $('#btn-pause-rec').textContent='暂停'; $('#rec-status').textContent='正在录制…'; }
+}
+function stopRecording(){
+  if(!recState||!recState.recorder) return;
+  if(recState.recorder.state!=='inactive') recState.recorder.stop();
+}
+
+async function summarizeBlob(blob, name, targetEl, recObj){
+  const outEl=targetEl||$('#sum-text');
+  if(targetEl) targetEl.parentElement.classList.remove('hidden');
+  else { $('#summary-box').classList.remove('hidden'); $('#btn-save-summary').disabled=true; }
+  if(!blob){
+    outEl.textContent='这段录制的视频数据已丢失，无法分析。\n（常见原因：上次会话没能把视频写入浏览器存储，刷新后只剩缩略图。）';
+    return '';
+  }
+  outEl.textContent='正在抽取关键帧…';
+  const frames=await extractFramesFromBlob(blob, 10, 40000);
+  if(!frames.length){ outEl.textContent='无法解析该录制文件，请确认文件有效'; return ''; }
+  outEl.textContent='正在 OCR 识别关键画面（本机运行）…';
+  const lines=[], allText=[];
+  let kept=0;
+  // 时长优先取记录里的 dur，其次读视频元数据；原先用的 recState.obj 恒为 undefined，
+  // 时间轴会一路退化成 60 秒的估算值。
+  const totalDur=(recObj&&recObj.dur)||(await probeDuration(blob))||60;
+  const durFrames=frames.map((f,i)=>({cv:f, t:frames.length>1? i/(frames.length-1)*totalDur : 0}));
+  for(const f of durFrames){
+    try{
+      const {text}=await ocrOnCanvas(f.cv, {maxSide:900, cb:m=>{}});
+      const t=text.replace(/\s+/g,' ').trim();
+      if(t.length>6){ lines.push(`[${fmtTS(f.t)}] ${t.slice(0,140)}`); allText.push(t); kept++; outEl.textContent=`已识别 ${kept} 个关键画面…`; }
+    }catch(e){}
+  }
+  if(!kept){ outEl.textContent='关键画面中未识别到文字（纯画面录屏无法做文字总结），可尝试在设置里切换 OCR 语言。'; }
+  const keywords=topKeywords(allText.join('\n'), 10);
+  let out='';
+  if(S.llmEnabled && S.llmKey){
+    outEl.textContent='正在调用 LLM 生成深度总结…';
+    try{
+      const llm=await llmChat(`你是屏幕录制分析助手。以下是录屏关键帧 OCR 提取的文字时间线：\n${lines.join('\n')}\n请用中文输出：1）一句话概括本次录屏内容；2）要点列表（3-8 条）；3）出现的关键主题词。控制在 300 字内。`);
+      out=`【AI 深度总结】\n${llm}\n\n`;
+    }catch(e){ out=`（LLM 调用失败：${e.message||'未知错误'}，以下为本地分析）\n\n`; }
+  }
+  out += `【关键词】${keywords.join('、')||'无'}\n\n【内容时间线】\n${lines.join('\n')||'（未识别到文字内容）'}\n\n【数据】关键画面 ${durFrames.length} 帧，其中识别到文字 ${kept} 帧`;
+  outEl.textContent=out;
+  if(!targetEl && kept){ $('#btn-save-summary').disabled=false; }
+  return out;
+}
+// 读视频真实时长（秒），失败返回 0
+function probeDuration(blob){
+  return new Promise(res=>{
+    let url='';
+    try{ url=URL.createObjectURL(blob); }catch(e){ return res(0); }
+    const v=document.createElement('video');
+    let done=false;
+    const finish=d=>{ if(done) return; done=true; try{ URL.revokeObjectURL(url); }catch(e){} res(isFinite(d)?d:0); };
+    v.preload='metadata'; v.muted=true;
+    v.onloadedmetadata=()=>finish(v.duration);
+    v.onerror=()=>finish(0);
+    v.src=url;
+    setTimeout(()=>finish(v.duration||0), 5000);
+  });
+}
+function extractFramesFromBlob(blob, n, budgetMs=25000){
+  return new Promise(res=>{
+    const url=URL.createObjectURL(blob);
+    const v=document.createElement('video');
+    v.src=url; v.muted=true; v.preload='auto';
+    const frames=[];
+    let done=false;
+    const finish=()=>{ if(!done){ done=true; try{ URL.revokeObjectURL(url); }catch(e){} res(frames); } };
+    v.onerror=finish;
+    v.onloadeddata=async ()=>{
+      const dur=v.duration||1;
+      for(let i=0;i<n;i++){
+        if(done) return;
+        try{
+          // 最后一帧不前移到 dur-0.05，避免个别容器 seek 越界导致整段抽帧卡住
+          const t=i===n-1 ? Math.max(0,dur-0.1) : dur*(i/(n||1));
+          v.currentTime=t;
+          await new Promise(r=>{ v.onseeked=()=>{ v.onseeked=null; r(); }; setTimeout(r,1200); });
+          if(v.videoWidth>0 && !done){
+            const cw=480, ch=Math.max(2,Math.round(cw*v.videoHeight/v.videoWidth));
+            const cv=document.createElement('canvas');
+            cv.width=cw; cv.height=ch;
+            cv.getContext('2d').drawImage(v,0,0,cw,ch);
+            frames.push(cv);
+          }
+        }catch(e){}
+      }
+      finish();
+    };
+    setTimeout(finish, budgetMs);
+  });
+}
+function blobToDataURL(blob){
+  return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=()=>rej(r.error); r.readAsDataURL(blob); });
+}
+// 异步补一帧缩略图（不阻塞卡片渲染）
+// 注意：只有在「没有缩略图」时才需要抽帧；如果已有 poster 但缺 blob，
+// 那是上次会话没能把视频存下来的记录，抽不出帧也没有意义，直接跳过。
+async function ensurePoster(rec){
+  if(!rec || rec.poster || !rec.blob) return;
+  try{
+    const frames=await extractFramesFromBlob(rec.blob, 1, 8000);
+    if(!frames.length||!frames[0].width) return;
+    const cv=frames[0];
+    if(cv.width>480){ const t=document.createElement('canvas'); t.width=480; t.height=Math.round(480*cv.height/cv.width); t.getContext('2d').drawImage(cv,0,0,t.width,t.height); rec.poster=t.toDataURL('image/jpeg',0.7); }
+    else rec.poster=cv.toDataURL('image/jpeg',0.7);
+    rec._skipBlob=true;                 // 回写时跳过 blob，只更新缩略图（配合 dbAdd 里的判断）
+    await dbAdd('recs', rec);
+    delete rec._skipBlob;
+  }catch(e){}
+}
+function playBlob(blob, name){
+  if(!blob){ toast('这段录制的视频数据已丢失（多因上次会话未正常保存），无法播放','err'); return; }
+  const url=URL.createObjectURL(blob);
+  const v=document.createElement('video');
+  v.src=url; v.controls=true; v.style.cssText='width:100%;border-radius:10px;background:#000';
+  v.onloadedmetadata=()=>v.play().catch(()=>{});
+  openModal({title:'播放：'+safeName(name), wide:true, body:v, onClose:()=>URL.revokeObjectURL(url)});
+}
+function downloadBlob(blob, name){
+  if(!blob){ toast('这段录制的视频数据已丢失，无法下载','err'); return; }
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download=safeName(name);
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 3000);
+}
+
+/* ============ AI 视图 ============ */
+const aiFile=$('#ai-file'), aiImg=$('#ai-preview');
+let aiCanvas=null;
+$('#drop-zone').onclick=()=>aiFile.click();
+$('#drop-zone').addEventListener('dragover',e=>{ e.preventDefault(); e.target.classList.add('drag'); });
+$('#drop-zone').addEventListener('dragleave',()=>$('#drop-zone').classList.remove('drag'));
+$('#drop-zone').addEventListener('drop',e=>{
+  e.preventDefault(); $('#drop-zone').classList.remove('drag');
+  const f=e.dataTransfer.files[0];
+  if(f&&f.type.startsWith('image/')) loadAiFile(f);
+});
+aiFile.onchange=()=>{ if(aiFile.files[0]) loadAiFile(aiFile.files[0]); };
+function loadAiFile(file){
+  const rd=new FileReader();
+  rd.onload=()=>{
+    const img=new Image();
+    img.onload=()=>{
+      const cv=document.createElement('canvas');
+      cv.width=img.width; cv.height=img.height;
+      cv.getContext('2d').drawImage(img,0,0);
+      aiCanvas=cv;
+      aiImg.src=rd.result;
+      $('#ai-preview-wrap').classList.remove('hidden');
+      $('#ai-ocr-box').classList.add('hidden');
+      $('#drop-zone').classList.add('hidden');
+      toast('图片已载入，可识别文字或扫描敏感信息');
+    };
+    img.src=rd.result;
+  };
+  rd.readAsDataURL(file);
+}
+/*
+ * 自动接收本地截图。
+ * 热键脚本截完图会 POST 到 /api/shot，这里定时来取。
+ * 取到就自动切到「AI 识别」页并直接开始翻译，做到"按快捷键 → 出译文"。
+ */
+let shotPoller = null;
+let lastShotSig = '';
+function startShotPolling(){
+  if(shotPoller) return;
+  shotPoller = setInterval(async ()=>{
+    // 已经有翻译在进行时不抢，避免打断用户当前操作
+    if(trBusy || capturing) return;
+    try{
+      const r = await fetch('/api/shot', { cache:'no-store' });
+      if(!r.ok) return;
+      const j = await r.json();
+      if(!j || !j.image) return;
+      if(j.image === lastShotSig) return;   // 同图不重复处理
+      lastShotSig = j.image;
+      await acceptShot(j.image);
+    }catch(e){ /* 服务没起或网络抖动，忽略 */ }
+  }, 1200);
+}
+async function acceptShot(dataUrl){
+  const img = new Image();
+  await new Promise((res, rej)=>{ img.onload=res; img.onerror=rej; img.src = dataUrl; });
+  const cv = document.createElement('canvas');
+  cv.width = img.width; cv.height = img.height;
+  cv.getContext('2d').drawImage(img, 0, 0);
+  aiCanvas = cv;
+  aiImg.src = dataUrl;
+  $('#drop-zone').classList.add('hidden');
+  $('#ai-preview-wrap').classList.remove('hidden');
+  $('#ai-ocr-box').classList.add('hidden');
+  viewNav('ai');
+  toast('已收到新截图，正在翻译…');
+  // 直接走翻译流程
+  setTimeout(()=>{ const b = $('#btn-ai-translate'); if(b) b.click(); }, 120);
+}
+
+$('#btn-ai-ocr').onclick=async()=>{
+  if(!aiCanvas) return;
+  $('#ai-ocr-box').classList.remove('hidden');
+  $('#ai-ocr-status').classList.add('hidden');
+  const txt=$('#ai-ocr-text');
+  txt.value='识别中…';
+  try{
+    // 带上块结构：这样才能拿到每行的置信度，把"图片/图标区域被凭空造出来的字符"挡掉。
+    // 旧实现直接显示原始 OCR 文本，用户看到的就是一段乱码。
+    const {text, lines:ocrLines}=await ocrOnCanvas(aiCanvas, {needBlocks:true, cb:m=>{ if(m.status==='recognizing text') $('#ai-ocr-progress').textContent=Math.round((m.progress||0)*100)+'%'; }});
+    $('#ai-ocr-progress').textContent='完成';
+    const kept = filterOcrLines(ocrLines);
+    const clean = kept.length ? kept : cleanOcrOutput(text);
+    txt.value = clean.length ? clean.join('\n') : '（未识别到文字）';
+  }catch(e){ $('#ai-ocr-progress').textContent=''; txt.value='识别失败：'+(e.message||''); }
+};
+$('#btn-ai-scan').onclick=async()=>{
+  if(!aiCanvas) return;
+  toast('正在 OCR 并扫描敏感信息…');
+  try{
+    const {words}=await ocrOnCanvas(aiCanvas, {needBlocks:true});
+    const hits=scanSensitive(words);
+    if(!hits.length){ toast('未发现手机号 / 邮箱 / 身份证等敏感信息','ok'); return; }
+    const red=redactCanvas(aiCanvas, hits);
+    const cvEl=document.createElement('canvas');
+    cvEl.width=red.width; cvEl.height=red.height;
+    cvEl.style.cssText='max-width:100%;max-height:300px;border-radius:10px;border:1px solid var(--line);margin-bottom:8px';
+    cvEl.getContext('2d').drawImage(red,0,0);
+    const info=document.createElement('div');
+    info.style.cssText='font-size:12px;color:var(--muted);margin-bottom:8px';
+    info.textContent=`共打码 ${hits.length} 处：${Array.from(new Set(hits.map(h=>h.type))).join('、')}（示例：${hits.slice(0,3).map(h=>maskValue(h.value)).join('、')}）`;
+    const box=openModal({title:'敏感信息已打码', wide:true, body:null, actions:[
+      {label:'下载', cls:'primary', onClick:close=>{ close(); const dataUrl=red.toDataURL(S.shotFormat==='image/jpeg'?'image/jpeg':'image/png', S.shotQuality); downloadDataURL(dataUrl, `脱敏_${fmtDate(new Date())}.${extName()}`); toast('已下载脱敏图片','ok'); }},
+      {label:'存入历史', cls:'secondary', onClick:close=>{ close(); saveShot(red, `脱敏_${fmtDate(new Date())}.${extName()}`).then(()=>toast('已保存到历史记录','ok')); }},
+      {label:'关闭', cls:'ghost'}
+    ]});
+    const wrap=document.createElement('div');
+    wrap.append(info, cvEl);
+    box.el.querySelector('.m-body').appendChild(wrap);
+  }catch(e){ toast(e.message||'扫描失败','err'); }
+};
+$('#btn-ai-translate').onclick=async()=>{
+  if(!aiCanvas) return toast('请先选择一张图片','err');
+  if(trBusy) return toast('翻译正在进行中…');
+  trBusy = true;
+  let box=null, cancelled=false;
+  try{
+    box = openModal({
+      title:'图片翻译',
+      actions:[{label:'取消', cls:'ghost', onClick:close=>{ cancelled=true; close(); }}],
+      onClose:()=>{ cancelled=true; }
+    });
+    const hint=document.createElement('div');
+    hint.style.cssText='font-size:13px;color:var(--muted);line-height:1.8';
+    hint.textContent='准备中…';
+    const sub=document.createElement('div');
+    sub.style.cssText='font-size:11px;color:var(--dim);margin-top:8px;line-height:1.7';
+    sub.textContent='识别在本机完成；只有识别出的文字会发送给翻译服务。';
+    box.el.querySelector('.m-body').append(hint, sub);
+
+    const controller=new AbortController();
+    const res=await translateCanvas(aiCanvas, {
+      from:S.trFrom, to:S.trTo, engine:S.trEngine, mode:S.trMode, signal:controller.signal,
+      onProgress:p=>{ if(!cancelled) hint.textContent=trProgressText(p); }
+    });
+    if(cancelled) return;
+    box.close(); box=null;
+    if(res.empty){
+      toast(res.sameLang ? '识别到的原文已经是目标语言，无需翻译（可在设置里改目标语言）'
+                         : '未识别到可翻译的文字，可尝试更换原文语言','err');
+      return;
+    }
+    openTranslatePanel({
+      blocks:res.blocks, canvas:res.canvas, words:res.words, from:S.trFrom, to:S.trTo, detectedFrom:res.fromCode,
+      onRetarget:(f,t)=>{ S.trFrom=f; S.trTo=t; saveSettings(); $('#btn-ai-translate').click(); },
+      onEditBlock:()=>{}
+    });
+    notifyTranslateResult(res, false);
+  }catch(e){
+    if(box) box.close();
+    if(!cancelled) toast(e.message||'翻译失败','err');
+  }finally{ trBusy=false; }
+};
+$('#btn-copy-ocr').onclick=()=>{ navigator.clipboard.writeText($('#ai-ocr-text').value).then(()=>toast('已复制','ok')).catch(()=>toast('复制失败','err')); };
+
+async function refreshSumSelect(){
+  const recs=await dbAll('recs');
+  const sel=$('#sum-rec-select');
+  const prev=sel.value;
+  sel.innerHTML='';
+  if(!recs.length){ sel.innerHTML='<option value="">暂无录制记录</option>'; return; }
+  recs.forEach(r=>{
+    const o=document.createElement('option');
+    o.value=r.id;
+    // 明确标出哪些录制还留有视频数据，避免用户选中后点了没反应
+    o.textContent=`${r.name}（${fmtTS(r.dur)}）${r.blob?'':' · 视频已丢失'}`;
+    sel.appendChild(o);
+  });
+  if(recs.some(r=>r.id===prev)) sel.value=prev;
+}
+$('#btn-gen-summary').onclick=async()=>{
+  const id=$('#sum-rec-select').value;
+  const rec=(await dbAll('recs')).find(r=>r.id===id);
+  if(!rec){ toast('请先选择一段录屏','err'); return; }
+  const out=$('#sum-text2');
+  $('#sum-result').classList.remove('hidden');
+  if(rec.summary){ out.textContent=rec.summary; toast('这是已保存的总结'); return; }
+  if(!rec.blob){ out.textContent='这段录制的视频数据已丢失，无法分析。'; toast('视频数据已丢失','err'); return; }
+  // 复用同一套总结逻辑，避免这里和录屏页两份实现逐渐走偏
+  try{
+    const text=await summarizeBlob(rec.blob, rec.name, out, rec);
+    if(text){ rec.summary=text; rec._skipBlob=true; await dbAdd('recs',rec); delete rec._skipBlob; toast('总结已生成并保存','ok'); }
+  }catch(e){ out.textContent='总结失败：'+(e.message||'未知错误'); toast('总结失败','err'); }
+};
+$('#btn-copy-summary2').onclick=()=>{ navigator.clipboard.writeText($('#sum-text2').textContent).then(()=>toast('已复制总结','ok')).catch(()=>toast('复制失败','err')); };
+
+async function llmChat(prompt){
+  const base=(S.llmBase||'').replace(/\/+$/,'');
+  const res=await fetch(base+'/chat/completions',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+S.llmKey},
+    body:JSON.stringify({model:S.llmModel||'deepseek-chat', messages:[{role:'user',content:prompt}], temperature:0.4})
+  });
+  if(!res.ok) throw new Error('HTTP '+res.status);
+  const j=await res.json();
+  return j.choices&&j.choices[0]&&j.choices[0].message?j.choices[0].message.content:'';
+}
+
+const STOP_WORDS=new Set('的了是在和与及或个我你他她它这那有就都不也还要会着说吗呢啊哦让从把被对向为以于因为所以但是然而如果已经没有这些那些怎么什么一个这个那个我们你们他们'.split(''));
+function topKeywords(text,n){
+  const counts=new Map();
+  const cjk=text.match(/[\u4e00-\u9fff]{2,}/g)||[];
+  for(const run of cjk){
+    for(let i=0;i<run.length-1;i++){
+      const g2=run.slice(i,i+2);
+      if(!STOP_WORDS.has(g2)) counts.set(g2,(counts.get(g2)||0)+1);
+    }
+  }
+  const en=text.match(/[A-Za-z]{3,}/g)||[];
+  for(const w of en){ const lw=w.toLowerCase(); if(!STOP_WORDS.has(lw)) counts.set(lw,(counts.get(lw)||0)+1); }
+  return [...counts.entries()].sort((a,b)=>b[1]-a[1]).slice(0,n).map(e=>e[0]);
+}
+
+/* ============ 历史记录 ============ */
+let histTab='shots';
+$$('.tab').forEach(t=>t.onclick=()=>{
+  histTab=t.dataset.tab;
+  $$('.tab').forEach(x=>x.classList.toggle('active',x===t));
+  renderHistory();
+});
+async function renderHistory(){
+  const shots=await dbAll('shots');
+  const recs=await dbAll('recs');
+  const grid=$('#hist-grid'), empty=$('#hist-empty');
+  // 回收上一轮渲染创建的 blob 地址，否则反复切换标签页会持续占用内存
+  $$('#hist-grid video').forEach(v=>{ if(v._objUrl){ try{ URL.revokeObjectURL(v._objUrl); }catch(e){} v._objUrl=null; } });
+  grid.innerHTML='';
+  const list = histTab==='shots'?shots:recs;
+  empty.classList.toggle('hidden', list.length>0);
+  if(!list.length){ grid.classList.add('hidden'); return; }
+  grid.classList.remove('hidden');
+  for(const item of list){
+    const card=document.createElement('div');
+    card.className='hcard';
+    const thumb=document.createElement('div');
+    thumb.className='thumb';
+    const meta=document.createElement('div');
+    meta.className='meta';
+    const nm=document.createElement('div'); nm.className='nm'; nm.textContent=item.name;
+    const dt=document.createElement('div'); dt.className='dt';
+    dt.textContent=new Date(item.date).toLocaleString('zh-CN')+(histTab==='recs'?` · ${fmtTS(item.dur)} · ${fmtSize(item.size)}`:` · ${item.w}×${item.h}`);
+    meta.append(nm,dt);
+    const acts=document.createElement('div');
+    acts.className='acts';
+    if(histTab==='shots'){
+      const b1=document.createElement('button'); b1.textContent='编辑'; b1.onclick=()=>{ const img=new Image(); img.onload=()=>openEditor(img); img.src=item.dataUrl; };
+      const b2=document.createElement('button'); b2.textContent='AI 识别'; b2.onclick=()=>{ const img=new Image(); img.onload=()=>{ aiCanvas=toCanvas(img); $('#drop-zone').classList.add('hidden'); $('#ai-preview-wrap').classList.remove('hidden'); aiImg.src=img.src; $('#ai-ocr-box').classList.add('hidden'); viewNav('ai'); toast('已载入图片，可识别或扫描'); }; img.src=item.dataUrl; };
+      const b3=document.createElement('button'); b3.textContent='翻译'; b3.onclick=()=>{ const img=new Image(); img.onload=()=>{ aiCanvas=toCanvas(img); $('#drop-zone').classList.add('hidden'); $('#ai-preview-wrap').classList.remove('hidden'); aiImg.src=img.src; $('#ai-ocr-box').classList.add('hidden'); viewNav('ai'); $('#btn-ai-translate').click(); }; img.src=item.dataUrl; };
+      const b4=document.createElement('button'); b4.textContent='下载'; b4.onclick=()=>downloadDataURL(item.dataUrl,item.name);
+      const b5=document.createElement('button'); b5.textContent='删除'; b5.onclick=()=>confirmDel('shots',item);
+      acts.append(b1,b2,b3,b4,b5);
+      const im=document.createElement('img');
+      im.src=item.dataUrl;
+      im.onclick=b1.onclick;
+      thumb.appendChild(im);
+    }else{
+      const hasBlob=!!item.blob;
+      const b1=document.createElement('button'); b1.textContent='播放';
+      b1.onclick=()=>{ if(hasBlob) playBlob(item.blob,item.name); else toast('这段录制的视频数据已丢失，无法播放','err'); };
+      const b2=document.createElement('button'); b2.textContent='AI 总结'; b2.onclick=()=>{
+        toast('正在生成总结，请稍候…');
+        const box=openModal({title:'AI 总结：'+safeName(item.name), wide:true,
+          body:(()=>{ const pre=document.createElement('pre'); pre.className='textout'; pre.textContent='正在抽取关键帧…'; return pre; })(),
+          actions:[{label:'关闭', cls:'ghost'}]});
+        summarizeBlob(item.blob, item.name, box.el.querySelector('pre'), item).catch(e=>{});
+      };
+      const b3=document.createElement('button'); b3.textContent='下载';
+      b3.onclick=()=>{ if(hasBlob) downloadBlob(item.blob,item.name); else toast('这段录制的视频数据已丢失，无法下载','err'); };
+      const b4=document.createElement('button'); b4.textContent='删除'; b4.onclick=()=>confirmDel('recs',item);
+      acts.append(b1,b2,b3,b4);
+      const v=document.createElement('video');
+      v.muted=true; v.playsInline=true;
+      if(item.poster){
+        v.poster=item.poster; v.preload='none';
+      }else if(hasBlob){
+        // 没有缩略图时靠 blob 地址兜底；这个地址必须记下来，否则每次重渲染都会泄漏一个 objectURL
+        try{ v._objUrl=URL.createObjectURL(item.blob); v.src=v._objUrl; v.preload='metadata'; }catch(e){}
+        ensurePoster(item);
+      }
+      v.onclick=b1.onclick;
+      thumb.appendChild(v);
+    }
+    card.append(thumb,meta,acts);
+    grid.appendChild(card);
+  }
+}
+function confirmDel(store,item){
+  openModal({title:'删除确认', body:`确定删除「${safeName(item.name)}」吗？此操作不可恢复。`, actions:[
+    {label:'取消', cls:'ghost'},
+    {label:'删除', cls:'danger', onClick:async close=>{ close(); const ok=await dbDel(store,item.id); renderHistory(); toast(ok?'已删除':'删除失败','ok'); }}
+  ]});
+}
+
+/* ============ 设置 ============ */
+// 翻译语言下拉：语言表是唯一数据源，界面与引擎不会走偏
+function fillLangSelect(el, val){
+  if(!el) return;
+  el.innerHTML='';
+  if(el.id==='set-tr-from'){ const o=document.createElement('option'); o.value='auto'; o.textContent='自动检测（推荐）'; el.appendChild(o); }
+  LANGS.forEach(l=>{ const o=document.createElement('option'); o.value=l.code; o.textContent=`${l.flag} ${l.name}`; el.appendChild(o); });
+  el.value = val;
+}
+function fillSettings(){
+  $('#set-ocr-lang').value=S.ocrLang;
+  $('#set-ocr-side').value=String(S.ocrSide);
+  $('#set-shot-format').value=S.shotFormat;
+  $('#set-shot-quality').value=String(S.shotQuality);
+  $('#set-shot-quality-lbl').textContent=(+S.shotQuality).toFixed(2);
+  $('#set-llm-enabled').checked=!!S.llmEnabled;
+  $('#set-llm-base').value=S.llmBase;
+  $('#set-llm-key').value=S.llmKey;
+  $('#set-llm-model').value=S.llmModel;
+  fillLangSelect($('#set-tr-from'), S.trFrom);
+  fillLangSelect($('#set-tr-to'), S.trTo);
+  $('#set-tr-engine').value=S.trEngine;
+  $('#set-tr-mode').value=S.trMode;
+  $('#set-tr-recover').checked=!!S.trRecoverMissing;
+  const hkEl = $('#set-hotkey');
+  if(hkEl) hkEl.value = S.hotkey || '';
+  syncShotFormatUI();
+}
+function saveSettings(){
+  S.ocrLang=$('#set-ocr-lang').value;
+  S.ocrSide=+$('#set-ocr-side').value;
+  S.shotFormat=$('#set-shot-format').value;
+  S.shotQuality=+$('#set-shot-quality').value;
+  S.llmEnabled=$('#set-llm-enabled').checked;
+  S.llmBase=$('#set-llm-base').value.trim()||DEFAULTS.llmBase;
+  S.llmKey=$('#set-llm-key').value.trim();
+  S.llmModel=$('#set-llm-model').value.trim()||DEFAULTS.llmModel;
+  const tf=$('#set-tr-from'), tt=$('#set-tr-to'), te=$('#set-tr-engine'), tm=$('#set-tr-mode');
+  if(tf) S.trFrom=tf.value;
+  if(tt) S.trTo=tt.value;
+  if(te) S.trEngine=te.value;
+  if(tm) S.trMode=tm.value;
+  const trc=$('#set-tr-recover');
+  if(trc) S.trRecoverMissing=trc.checked;
+  try{ localStorage.setItem('aics_settings', JSON.stringify(S)); }catch(e){}
+}
+$('#btn-save-settings').onclick=()=>{
+  const oldLang=S.ocrLang;
+  saveSettings();
+  if(S.ocrLang!==oldLang){ resetOcrWorker(); toast('设置已保存，识别语言已变更，将重新加载模型','ok'); }
+  else toast('设置已保存','ok');
+};
+// 切换截图格式时同步：JPEG 质量行的显隐 + 说明文字
+function syncShotFormatUI(){
+  const jpeg=$('#set-shot-format').value==='image/jpeg';
+  $('#row-shot-quality').classList.toggle('hidden', !jpeg);
+  $('#set-shot-hint').textContent = jpeg ? 'JPEG 有损压缩，适合体积敏感的场景' : 'PNG 无损，适合文字截图与再次编辑';
+}
+// 即改即存，避免「改了没点保存就丢失」
+$('#set-ocr-lang').addEventListener('change', ()=>{ saveSettings(); resetOcrWorker(); });
+['#set-ocr-side','#set-shot-format','#set-llm-enabled','#set-tr-engine','#set-tr-from','#set-tr-to','#set-tr-mode','#set-tr-recover'].forEach(sel=>{
+  const el=$(sel); if(el) el.addEventListener('change', saveSettings);
+});
+['#set-llm-base','#set-llm-key','#set-llm-model'].forEach(sel=>{
+  const el=$(sel); if(el) el.addEventListener('change', saveSettings);
+});
+// 滑块边拖边更新显示值，松手（change）时才落盘
+$('#set-shot-quality').addEventListener('input', e=>{ $('#set-shot-quality-lbl').textContent=(+e.target.value).toFixed(2); });
+$('#set-shot-quality').addEventListener('change', e=>{
+  $('#set-shot-quality-lbl').textContent=(+e.target.value).toFixed(2);
+  saveSettings();
+});
+$('#set-shot-format').addEventListener('change', syncShotFormatUI);
+$('#btn-reset-settings').onclick=()=>{
+  openModal({title:'恢复默认设置', body:'将把 OCR、截图格式、翻译与 LLM 配置全部重置为默认值，历史记录不受影响。是否继续？', actions:[
+    {label:'取消', cls:'ghost'},
+    {label:'恢复默认', cls:'danger', onClick:close=>{
+      close();
+      S=Object.assign({},DEFAULTS);
+      try{ localStorage.removeItem('aics_settings'); }catch(e){}
+      fillSettings();
+      resetOcrWorker();
+      resetOcrExtraWorkers();
+      loadTesseract();
+      refreshPackStatus();
+      toast('已恢复默认设置，正在重新加载 OCR 引擎…','ok');
+    }}
+  ]});
+};
+$('#btn-ocr-reload').onclick=()=>{ resetOcrWorker(); resetOcrExtraWorkers(); loadTesseract(); toast('正在重新加载 OCR 引擎…'); };
+$('#btn-tr-download').onclick=()=>downloadAllLangPacks();
+
+/* ============ 全局热键的设置界面 ============
+ * 网页无法直接注册系统热键，但可以把用户选的组合写进本地服务，
+ * 由「全局热键.ps1」读取后注册。这里负责"录键"并把配置保存到磁盘。
+ */
+let recordingHotkey = false;
+const HK_MOD = { Control:'Ctrl', Alt:'Alt', Shift:'Shift', Meta:'Win' };
+
+function hotkeyToText(e){
+  const parts = [];
+  if(e.ctrlKey) parts.push('Ctrl');
+  if(e.altKey) parts.push('Alt');
+  if(e.shiftKey) parts.push('Shift');
+  if(e.metaKey) parts.push('Win');
+  let key = e.key;
+  if(['Control','Alt','Shift','Meta'].includes(key)) return null;   // 只按了修饰键
+  if(/^[a-z]$/i.test(key)) key = key.toUpperCase();
+  else if(/^[0-9]$/.test(key)) key = key;
+  else if(/^F([1-9]|1[0-2])$/.test(key)) key = key.toUpperCase();
+  else return null;                                                  // 不支持的键
+  if(!parts.length) return null;                                     // 必须有修饰键
+  parts.push(key);
+  return parts.join('+');
+}
+
+const hkInput = $('#set-hotkey');
+if(hkInput){
+  hkInput.addEventListener('focus', ()=>{ recordingHotkey = true; hkInput.value = '请按下组合键…'; });
+  hkInput.addEventListener('blur', ()=>{
+    recordingHotkey = false;
+    hkInput.value = S.hotkey || '';
+  });
+  hkInput.addEventListener('keydown', (e)=>{
+    if(!recordingHotkey) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if(e.key === 'Escape'){ hkInput.blur(); return; }
+    const spec = hotkeyToText(e);
+    if(!spec) return;                       // 还在按修饰键，继续等
+    S.hotkey = spec;
+    hkInput.value = spec;
+    hkInput.blur();
+    toast('已选择 '+spec+'，点「应用」写入配置','ok');
+  });
+}
+
+$('#btn-hotkey-save').onclick = async ()=>{
+  const spec = S.hotkey || $('#set-hotkey').value;
+  if(!spec || spec === '请按下组合键…') return toast('请先点输入框并按下想用的组合键','err');
+  try{
+    const r = await fetch('/api/hotkey', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ hotkey: spec })
+    });
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const j = await r.json();
+    if(!j.ok) throw new Error(j.error || '保存失败');
+    toast(`全局热键已设为 ${spec}，重启「启动全局热键.bat」后生效`, 'ok');
+    saveSettings();
+  }catch(e){
+    toast('写入失败：'+(e.message||e)+'（请确认是通过「启动助手.bat」起的服务）','err');
+  }
+};
+
+
+/* ============ 快捷键 / 初始化 ============ */
+window.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){
+    const mask=$('#region-mask');
+    if(!mask.classList.contains('hidden')) return;
+    const m=document.querySelector('.mask');
+    if(m) m.remove();
+    return;
+  }
+  if(!(e.ctrlKey&&e.shiftKey)) return;
+  if(e.key==='S'||e.key==='s'){ e.preventDefault(); doCapture('full'); }
+  else if(e.key==='R'||e.key==='r'){ e.preventDefault(); if(recState&&recState.recorder) stopRecording(); else startRecording(); }
+});
+
+/* ============ 全局热键联动 ============
+ * 浏览器不能注册系统级热键，也不能在后台截图。
+ * 由同目录的「全局热键.ps1」常驻接收系统热键，再把本页唤到前台并带上 auto=1。
+ * 页面看到 auto=1 就自动开始截图——从用户视角看，就是"按快捷键直接截"。
+ *
+ * 注意：系统仍会弹一次"选择要共享的内容"对话框，这是浏览器强制的。
+ * 勾选"记住此选择"后，后续热键截图就不再弹了。
+ */
+function hotkeyAutoCapture(){
+  const q = new URLSearchParams(location.search);
+  if(q.get('auto') !== '1') return;
+  const mode = q.get('mode') === 'full' ? 'full' : 'region';
+  // 清掉参数，避免刷新页面时又截一次
+  try{
+    const u = new URL(location.href);
+    u.searchParams.delete('auto');
+    u.searchParams.delete('mode');
+    history.replaceState(null, '', u.pathname + u.search + u.hash);
+  }catch(e){}
+  // 等页面完全就绪再触发，否则 getDisplayMedia 可能因页面未激活而失败
+  setTimeout(()=>{
+    if(capturing) return;
+    doCapture(mode === 'region' ? 'region' : 'full');
+  }, 350);
+}
+// 热键守护进程在页面已打开时，改为用 hash 传递指令（不必重新加载页面）
+window.addEventListener('hashchange', ()=>{
+  if(location.hash === '#snap'){
+    history.replaceState(null, '', location.pathname + location.search);
+    if(!capturing) doCapture('region');
+  }
+});
+
+
+window.ASNAP = { openEditor, ocrOnCanvas, getWorker, translateCanvas, translateTexts, mergeWordBoxes, renderTranslatedCanvas }; // 挂载 OCR 与翻译供测试/调试
+window.addEventListener('load', async()=>{
+  fillSettings();
+  await loadTesseract();
+  refreshPackStatus();
+  await renderHistory();
+  await refreshSumSelect();
+  hotkeyAutoCapture();
+  startShotPolling();
+  const err=screenApiError();
+  if(err){
+    setTimeout(()=>{
+      toast('提示：截图/录屏暂不可用 —— '+err, 'err');
+      if(location.protocol==='file:'){
+        openModal({title:'正在以 file:// 方式打开', body:`<b>当前页面由 <code>file://</code> 直接打开</b>，浏览器安全策略会禁用屏幕捕获，导致无法截图和录屏。<br><br><b>请在 localhost 下使用：</b><br>1. 双击本目录里的 <b>启动助手.bat</b>（自动启动服务并用浏览器打开）<br>2. 或手动执行 <code>python -m http.server 8787</code>，然后访问<br><code>http://127.0.0.1:8787/ai-capture-assistant.html</code><br><br><b>提示：</b>若 python 命令一闪而过或提示找不到，说明装的是应用商店占位版本，可改用<br><code>npx --yes http-server -p 8787 -a 127.0.0.1</code>`, actions:[{label:'知道了', cls:'primary'}]});
+      }
+    }, 400);
+  }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,30 @@
+# ---- 运行时产物（不入库）----
+# 用户自己截图产生的文件，绝不提交
+captures/
+*.log
+
+# ---- 本地备份与打包产物 ----
+.backup/
+.trae-html-share-packages/
+*.zip
+
+# ---- 临时 / 调试文件 ----
+.diag/
+.diag-*
+*.tmp
+*.tmp.*
+.min.out
+iso.out
+.simkey.ps1
+
+# ---- 编辑器 / 操作系统 ----
+.vscode/
+.idea/
+*.swp
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# ---- 依赖（本项目零依赖，留作保险）----
+node_modules/
+package-lock.json
