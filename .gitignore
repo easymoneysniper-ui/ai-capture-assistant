@@ -22,6 +22,9 @@ iso.out
 push-to-github.ps1
 GitHub开源操作手册.md
 
+# ---- 个人简历等与本项目无关的材料 ----
+.resume/
+
 # ---- 编辑器 / 操作系统 ----
 .vscode/
 .idea/
