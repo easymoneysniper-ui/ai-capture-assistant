@@ -18,6 +18,37 @@ const PORT = parseInt(process.argv[2], 10) || 8787;
 const HOST = process.argv[3] || '127.0.0.1';
 const ROOT = __dirname;
 
+/* 静态资源统一附加的安全响应头。
+ *
+ * 这个服务只监听 127.0.0.1，但"只监听本机"不等于安全：
+ * 你浏览任何网页时，那个页面的 JS 都能尝试在当前浏览器里请求
+ * http://127.0.0.1:8787 —— 原来的响应里没有任何防护头，
+ * 于是恶意页面可以用 <iframe> 把助手页面嵌进来做点击劫持，
+ * 或者用 <script src> 引用 serve.js 返回的内容。
+ *
+ * X-Frame-Options: DENY         禁止被任何页面 iframe 嵌套
+ * X-Content-Type-Options: nosniff 禁止浏览器嗅探 MIME（防止 .gz 被当脚本执行）
+ * Referrer-Policy              不向外部站点泄露本地地址
+ * Content-Security-Policy      只允许同源脚本/样式，外链仅放行翻译接口与 CDN
+ */
+const SECURITY_HEADERS = {
+  'X-Frame-Options': 'DENY',
+  'X-Content-Type-Options': 'nosniff',
+  'Referrer-Policy': 'no-referrer',
+  'Content-Security-Policy': [
+    "default-src 'self'",
+    // 页面内联样式与脚本较多（单文件设计），这里保留 unsafe-inline；
+    // 翻译接口、OCR CDN、语言包 CDN 单独放行。
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com https://cdn.jsdelivr.net",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob:",
+    "media-src 'self' blob:",
+    "connect-src 'self' https://translate.googleapis.com https://api.mymemory.translated.net https://cdn.jsdelivr.net https://unpkg.com",
+    "worker-src 'self' blob:",
+    "frame-ancestors 'none'"
+  ].join('; ')
+};
+
 const MIME = {
   '.html': 'text/html; charset=utf-8',
   '.htm':  'text/html; charset=utf-8',
@@ -285,17 +316,17 @@ const server = http.createServer((req, res) => {
 
   fs.stat(target, (err, st) => {
     if (err || !st.isFile()) {
-      res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+      res.writeHead(404, Object.assign({ 'Content-Type': 'text/plain; charset=utf-8' }, SECURITY_HEADERS));
       res.end('404 Not Found: ' + pathname);
       return;
     }
     const type = MIME[path.extname(target).toLowerCase()] || 'application/octet-stream';
     // 关掉缓存，改完 HTML 刷新就能看到最新效果
-    res.writeHead(200, {
+    res.writeHead(200, Object.assign({
       'Content-Type': type,
       'Content-Length': st.size,
       'Cache-Control': 'no-store'
-    });
+    }, SECURITY_HEADERS));
     if (req.method === 'HEAD') { res.end(); return; }
     const stream = fs.createReadStream(target);
     stream.on('error', () => { try { res.destroy(); } catch (e) {} });
