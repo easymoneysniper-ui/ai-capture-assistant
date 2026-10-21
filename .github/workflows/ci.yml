@@ -1,0 +1,95 @@
+name: CI
+
+# 目标：每次推送到 main 或提 PR 时，自动验证「代码没坏」。
+# 项目零依赖，所以不需要 npm install —— 这也是能在 CI 里跑得快的原因。
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:        # 允许在 Actions 页面手动触发
+
+jobs:
+  test:
+    name: 单元测试 (Node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false      # 一个版本失败不要中断其它版本
+      matrix:
+        node: [ '18', '20', '22' ]
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: 运行单元测试
+        # 测试脚本直接读 ai-capture-assistant.html 抽取纯函数，
+        # 不需要 npm install、不需要构建步骤。
+        run: node test/run-all.js
+
+  syntax:
+    name: 语法检查
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: 检查 serve.js
+        run: node --check serve.js
+
+      - name: 检查页面内联脚本
+        # 单文件 HTML 的主逻辑都在 <script> 里，单独抽出来做语法检查，
+        # 否则语法错误只会在用户打开页面时才暴露。
+        run: |
+          node -e "
+          const fs = require('fs');
+          const html = fs.readFileSync('ai-capture-assistant.html', 'utf8');
+          const m = html.match(/<script>\s*'use strict';\n([\s\S]*?)<\/script>/);
+          if (!m) { console.error('未找到内联 script 块'); process.exit(1); }
+          fs.writeFileSync('/tmp/inline.js', m[1]);
+          console.log('内联脚本已提取: ' + m[1].length + ' 字符');
+          "
+          node --check /tmp/inline.js
+          echo "内联脚本语法正确"
+
+  test-files:
+    name: 测试文件完整性
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: 确认离线资源随包分发
+        # 这个项目的核心卖点是"离线可用"，OCR 引擎和语言包必须跟着仓库走，
+        # 一旦误删或被 .gitignore 挡住，功能就退化成必须联网。
+        run: |
+          missing=0
+          for f in core/tesseract.min.js core/worker.min.js core/tesseract-core-simd-lstm.wasm.js \
+                   tessdata/chi_sim.traineddata.gz tessdata/eng.traineddata.gz; do
+            if [ -f "$f" ]; then
+              echo "✓ $f ($(du -h "$f" | cut -f1))"
+            else
+              echo "✗ 缺失: $f"
+              missing=1
+            fi
+          done
+          exit $missing
