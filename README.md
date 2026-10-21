@@ -1,5 +1,8 @@
 # AI 截屏录屏助手
 
+[![CI](https://github.com/easymoneysniper-ui/ai-capture-assistant/actions/workflows/ci.yml/badge.svg)](https://github.com/easymoneysniper-ui/ai-capture-assistant/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 一个**纯本地运行**的截图 / 录屏 / OCR / 翻译工具。零依赖、零安装、双击即用。
 
 所有识别与处理都在本机浏览器内完成，**图片不上传**；只有需要翻译时，才会把「识别出的文字」发送给翻译服务。
@@ -165,14 +168,25 @@ PowerShell 守护进程收到系统热键（Win32 RegisterHotKey）
 node test/run-all.js
 ```
 
-当前覆盖 3 个纯函数、31 个断言：
+当前覆盖 3 个测试文件、62 个断言：
 
 | 测试文件 | 覆盖内容 |
 |---|---|
 | `clean-ocr-text.test.js` | 去叠字、还原混淆字符（`Sett1ngs`→`Settings`）、剥离界面装饰前缀（`7\|朱子翔`） |
 | `translatable.test.js` | 判断文本是否值得翻译；字号估算边界 |
+| `server-validation.test.js` | 语言包名与热键串的输入校验（服务端落盘接口的安全防线） |
 
 测试用例全部来自实际踩过的坑，包括**必须保留**的反例——比如 `1. 第一项`（有序列表编号不能当噪声删掉）、`Hello World 123`（含数字的正常句子不能被丢弃）。
+
+测试不在页面里另写一份实现，而是用 `test/load-functions.js` 从 `ai-capture-assistant.html` / `serve.js` **按名字抽取源码再求值**，保证测的就是线上真正在跑的那份代码。
+
+### 持续集成
+
+每次推送到 `main` 或提 PR 都会自动触发 [GitHub Actions](.github/workflows/ci.yml)，跑三件事：
+
+1. **单元测试** —— Node 18 / 20 / 22 三个版本
+2. **语法检查** —— `serve.js` 与页面内联脚本（内联部分先抽取再检查，避免语法错误只等到用户打开页面才暴露）
+3. **离线资源完整性** —— 确认 `core/`、`tessdata/` 的 5 个文件随仓库分发，防止"离线可用"这个卖点在某个提交里被悄悄破坏
 
 ### 行归并算法 A/B 基准
 
