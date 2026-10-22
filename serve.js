@@ -14,7 +14,12 @@ const fs = require('fs');
 const path = require('path');
 const url = require('url');
 
-const PORT = parseInt(process.argv[2], 10) || 8787;
+// 端口解析：显式传 0 表示"让系统分配空闲端口"，供集成测试与临时实例使用。
+// 注意不能写成 parseInt(argv) || 8787 —— 0 是 falsy，会被兜底成 8787，
+// 于是测试脚本想用随机端口反而撞上正在运行的服务。
+const rawPort = process.argv[2];
+const parsedPort = rawPort === undefined ? NaN : parseInt(rawPort, 10);
+const PORT = Number.isInteger(parsedPort) && parsedPort >= 0 ? parsedPort : 8787;
 const HOST = process.argv[3] || '127.0.0.1';
 const ROOT = __dirname;
 
@@ -356,10 +361,13 @@ server.on('error', (e) => {
 });
 
 server.listen(PORT, HOST, () => {
+  // 用实际绑定的端口，而不是传入的 PORT：
+  // 传 0 时系统会分配一个空闲端口，只有从 address() 才拿得到真实值。
+  const actualPort = server.address().port;
   console.log('============================================');
   console.log('  AI 截屏录屏助手 - 本地服务已启动');
   console.log('============================================');
-  console.log(`  访问地址: http://${HOST}:${PORT}/ai-capture-assistant.html`);
+  console.log(`  访问地址: http://${HOST}:${actualPort}/ai-capture-assistant.html`);
   console.log(`  服务目录: ${ROOT}`);
   console.log('');
   console.log('  关闭本窗口即可停止服务。');
