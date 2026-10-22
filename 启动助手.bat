@@ -30,8 +30,28 @@ pause
 exit /b 1
 
 :start
-REM 注意：where python 会命中 Microsoft Store 的占位程序（python.exe 根本不是解释器），
-REM 所以必须真正执行一次 --version，只有退出码为 0 才算可用。
+REM ---- 启动顺序：Node + serve.js 优先 ----
+REM serve.js 不只是静态服务器，它还提供三个本地接口：
+REM   /api/save-tessdata   语言包落盘缓存
+REM   /api/hotkey          设置页改热键
+REM   /api/shot            热键截图投递给网页
+REM 而 python -m http.server / npx http-server 都是纯静态服务，这些接口全是 404，
+REM 相关功能会静默失效——用户只会觉得"改了热键没反应""截图没送过来"，
+REM 很难联想到是启动方式的问题。所以只要本目录有 serve.js 且 Node 可用，
+REM 就必须走 Node + serve.js。
+
+if not exist "%~dp0serve.js" goto :try_python
+node --version >nul 2>&1
+if %errorlevel%==0 (
+    echo [1/2] 使用 Node 启动本地服务，端口 %PORT%
+    start "AI Capture Server (%PORT%)" cmd /k "chcp 65001>nul && cd /d "%~dp0" && node "%~dp0serve.js" %PORT% 127.0.0.1"
+    goto :waitup
+)
+echo [提示] 检测到 serve.js，但未找到 Node.js，改用静态服务兜底
+
+:try_python
+REM 兜底路径：没有 Node 时用 Python 起静态服务。
+REM 此模式缺少 /api 接口，热键配置与截图投递不可用，仅截图/识别/翻译可用。
 set "PYCMD="
 python --version >nul 2>&1
 if %errorlevel%==0 set "PYCMD=python"
@@ -40,20 +60,14 @@ if not defined PYCMD (
     if %errorlevel%==0 set "PYCMD=py -3"
 )
 if defined PYCMD (
-    echo [1/2] 使用 %PYCMD% 启动本地服务，端口 %PORT%
+    echo [1/2] 使用 %PYCMD% 启动静态服务，端口 %PORT%
+    echo [注意] 此模式不含 /api 接口，热键配置与截图投递不可用
     start "AI Capture Server (%PORT%)" cmd /k "chcp 65001>nul && cd /d "%~dp0" && %PYCMD% -m http.server %PORT% --bind 127.0.0.1"
     goto :waitup
 )
-node --version >nul 2>&1
-if %errorlevel%==0 (
-    REM 不依赖 npx 联网下载：优先用本目录自带的零依赖服务脚本，
-    REM 断网、npm 缓存被占用、代理受限时都能正常启动。
-    if exist "%~dp0serve.js" (
-        echo [1/2] 使用 Node 启动本地服务，端口 %PORT%
-        start "AI Capture Server (%PORT%)" cmd /k "chcp 65001>nul && cd /d "%~dp0" && node "%~dp0serve.js" %PORT% 127.0.0.1"
-        goto :waitup
-    )
-    echo [提示] 未找到 serve.js，回退到 npx（需联网下载，首次较慢）
+if exist "%~dp0serve.js" (
+    echo [提示] Node 与 Python 均不可用，尝试 npx http-server（首次会联网）
+    echo [注意] 此模式不含 /api 接口，热键配置与截图投递不可用
     start "AI Capture Server (%PORT%)" cmd /k "chcp 65001>nul && cd /d "%~dp0" && npx --yes http-server -p %PORT% -a 127.0.0.1 -c-1"
     goto :waitup
 )
