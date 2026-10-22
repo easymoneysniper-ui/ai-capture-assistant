@@ -225,9 +225,29 @@ public class Overlay : Form {
 public class HotForm : Form {
     public const int WM_HOTKEY = 0x0312;
     public event EventHandler Hot;
+
+    // 防重入：截图时遮罩窗体要跑自己的消息循环，
+    // 这期间如果用户又按一次热键，不应叠加开第二个遮罩。
+    // 注意：方法名不能叫 Enter/Leave —— Control 基类已有同名成员，会编译失败。
+    static int _busy = 0;
+    public static bool TryTakeBusy() { return System.Threading.Interlocked.CompareExchange(ref _busy, 1, 0) == 0; }
+    public static void ReleaseBusy() { System.Threading.Interlocked.Exchange(ref _busy, 0); }
+
     protected override void WndProc(ref Message m) {
         if (m.Msg == WM_HOTKEY) {
-            try { if (Hot != null) Hot(this, EventArgs.Empty); } catch { }
+            // 关键：不能在 WndProc 里直接执行截图。
+            // WndProc 运行在窗体消息循环内部，而截图流程要 ShowDialog()
+            // 弹出全屏遮罩 —— 那等于在消息处理过程中再开一层消息循环，
+            // 实测表现为"热键注册成功，但按下去毫无反应"。
+            // 用 BeginInvoke 把任务排到消息队列尾部，等当前消息处理完再执行。
+            try {
+                BeginInvoke((Action)(() => {
+                    if (!TryTakeBusy()) return;
+                    try { if (Hot != null) Hot(this, EventArgs.Empty); }
+                    catch { }
+                    finally { ReleaseBusy(); }
+                }));
+            } catch { }
             return;
         }
         base.WndProc(ref m);
@@ -336,6 +356,7 @@ $script:hkRegistered = $false
 $form.add_Shown({
     if ($script:hkRegistered) { return }
     $script:hkRegistered = $true
+    Log ("Shown 触发，Handle=" + $form.Handle + " Mod=" + $hk.Mod + " Key=" + $hk.Key)
 
     $wanted = $cfg.Hotkey
     $ok = [SC]::RegisterHotKey($form.Handle, 0x534E41, [uint32]$hk.Mod, [uint32]$hk.Key)
@@ -343,6 +364,14 @@ $form.add_Shown({
     if ($ok) {
         Log ("热键注册成功 " + $cfg.Hotkey)
         $notify.Text = "AI 截图助手 - $($cfg.Hotkey)"
+        # 启动时弹一次气泡，告诉用户"现在可以按了"。
+        # 没有这个提示，用户不知道守护进程是否真的在工作，
+        # 按了没反应时也无从判断是热键没注册还是别的问题。
+        try {
+            $notify.ShowBalloonTip(5000, "AI 截图助手已就绪",
+                "按 $($cfg.Hotkey) 即可截图（任意界面都有效）",
+                [System.Windows.Forms.ToolTipIcon]::Info)
+        } catch { }
         return
     }
 
