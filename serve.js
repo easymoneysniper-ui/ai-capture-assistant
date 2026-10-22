@@ -279,11 +279,21 @@ function handleShotGet(req, res){
 
 
 const server = http.createServer((req, res) => {
+  // 所有响应统一带安全头。
+  // 之前只有静态文件路径加了，400/403 这类错误响应漏掉了——
+  // 虽然错误页通常不渲染内容，但漏掉会让安全策略出现不一致的缝，
+  // 也容易在下次改动时被继续忽略。这里在入口统一挂上，后面不用重复写。
+  for (const [k, v] of Object.entries(SECURITY_HEADERS)) {
+    res.setHeader(k, v);
+  }
+
   let pathname;
   try {
     pathname = decodeURIComponent(url.parse(req.url).pathname || '/');
   } catch (e) {
-    res.writeHead(400); res.end('Bad Request'); return;
+    res.writeHead(400, { 'Content-Type': 'text/plain; charset=utf-8' });
+    res.end('Bad Request');
+    return;
   }
 
   // 语言包落盘：前端从 CDN 抓到 .traineddata.gz 后回传，存进 tessdata/。
@@ -311,22 +321,24 @@ const server = http.createServer((req, res) => {
   // 目录穿越防护：解析后必须仍在 ROOT 之内
   const target = path.normalize(path.join(ROOT, pathname));
   if (target !== ROOT && !target.startsWith(ROOT + path.sep)) {
-    res.writeHead(403); res.end('Forbidden'); return;
+    res.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' });
+    res.end('Forbidden');
+    return;
   }
 
   fs.stat(target, (err, st) => {
     if (err || !st.isFile()) {
-      res.writeHead(404, Object.assign({ 'Content-Type': 'text/plain; charset=utf-8' }, SECURITY_HEADERS));
+      res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
       res.end('404 Not Found: ' + pathname);
       return;
     }
     const type = MIME[path.extname(target).toLowerCase()] || 'application/octet-stream';
     // 关掉缓存，改完 HTML 刷新就能看到最新效果
-    res.writeHead(200, Object.assign({
+    res.writeHead(200, {
       'Content-Type': type,
       'Content-Length': st.size,
       'Cache-Control': 'no-store'
-    }, SECURITY_HEADERS));
+    });
     if (req.method === 'HEAD') { res.end(); return; }
     const stream = fs.createReadStream(target);
     stream.on('error', () => { try { res.destroy(); } catch (e) {} });
