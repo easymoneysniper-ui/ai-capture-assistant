@@ -858,15 +858,55 @@ const TR_ENGINES = { free:'free', llm:'llm' };
  * sl 允许传 'auto'：交给接口自己判定源语言，比本地猜语种准得多。
  */
 const GT_ENDPOINT = 'https://translate.googleapis.com/translate_a/single';
-async function gtTranslate(text, from, to, signal, onDetect){
+
+/* 带超时的 fetch。
+ *
+ * 原实现直接 await fetch()，网络不通时会一直挂到操作系统的 TCP 超时
+ * （实测 20 秒以上才报 Failed to fetch）。用户看到的现象就是"翻译卡住不动"，
+ * 而且是每条重试都各等 20 秒，几十条叠起来能到一两分钟。
+ *
+ * 这里统一加超时：到点主动 abort，把控制权立刻还给上层。
+ * 同时保留外部 signal 语义——用户点取消要能立即中断，不能因为这里包了一层就失灵。
+ */
+function fetchWithTimeout(url, opts, timeoutMs){
+  const ms = timeoutMs || 8000;
+  const outer = opts && opts.signal;
+  const ctrl = new AbortController();
+  let timedOut = false;
+
+  const timer = setTimeout(()=>{ timedOut = true; try{ ctrl.abort(); }catch(e){} }, ms);
+  const onOuterAbort = ()=>{ try{ ctrl.abort(); }catch(e){} };
+  if(outer){
+    if(outer.aborted){ clearTimeout(timer); ctrl.abort(); }
+    else outer.addEventListener('abort', onOuterAbort, { once:true });
+  }
+  const cleanup = ()=>{
+    clearTimeout(timer);
+    if(outer) outer.removeEventListener('abort', onOuterAbort);
+  };
+
+  return fetch(url, Object.assign({}, opts, { signal: ctrl.signal }))
+    .then(res=>{ cleanup(); return res; })
+    .catch(err=>{
+      cleanup();
+      if(timedOut){
+        const e = new Error('请求超时 ' + Math.round(ms/1000) + ' 秒');
+        e.name = 'TimeoutError';
+        throw e;
+      }
+      throw err;
+    });
+}
+
+async function gtTranslate(text, from, to, signal, onDetect, timeoutMs){
   const qs = new URLSearchParams({ client:'gtx', sl:from||'auto', tl:to, dt:'t', q:text });
   // 用 POST 而不是把整段文字塞进 URL：段落长时 GET 会超出 URL 长度上限而被截断/报 414。
-  const res = await fetch(GT_ENDPOINT, {
+  const res = await fetchWithTimeout(GT_ENDPOINT, {
     method:'POST',
     headers:{ 'Content-Type':'application/x-www-form-urlencoded;charset=utf-8' },
     body: qs.toString(),
     signal
-  });
+  }, timeoutMs || 5000);
   if(!res.ok) throw new Error('HTTP '+res.status);
   const j = await res.json();
   if(!Array.isArray(j) || !Array.isArray(j[0])) throw new Error('返回格式异常');
@@ -885,15 +925,16 @@ async function gtTranslateOne(text, from, to, signal, onDetect){
  * 截图里动辄几十个段落，逐条请求就是"翻译慢"的主因，这里把往返次数压到 1~2 次。
  * 注意：不能用多 q 参数（q=a&q=b），实测只翻第一条，其余会被静默忽略。
  */
-async function gtTranslateBatch(texts, from, to, signal, onDetect){
+async function gtTranslateBatch(texts, from, to, signal, onDetect, timeoutMs){
   const lines = texts.map(t=>String(t||'').replace(/\s*\n+\s*/g,' ').trim());
   const qs = new URLSearchParams({ client:'gtx', sl:from||'auto', tl:to, dt:'t', q:lines.join('\n') });
-  const res = await fetch(GT_ENDPOINT, {
+  // 批量包更大，给的时间也比单条宽一点
+  const res = await fetchWithTimeout(GT_ENDPOINT, {
     method:'POST',
     headers:{ 'Content-Type':'application/x-www-form-urlencoded;charset=utf-8' },
     body: qs.toString(),
     signal
-  });
+  }, timeoutMs || 6000);
   if(!res.ok) throw new Error('HTTP '+res.status);
   const j = await res.json();
   if(!Array.isArray(j) || !Array.isArray(j[0])) throw new Error('返回格式异常');
@@ -942,7 +983,7 @@ async function myMemoryTranslate(text, from, to, signal){
     return parts.join('');
   }
   const qs = new URLSearchParams({ q, langpair:`${from}|${to}` });
-  const res = await fetch(`https://api.mymemory.translated.net/get?${qs}`, { signal });
+  const res = await fetchWithTimeout(`https://api.mymemory.translated.net/get?${qs}`, { signal }, 6000);
   if(!res.ok) throw new Error('HTTP '+res.status);
   const j = await res.json();
   // responseStatus 才是真实结果：限流/超额时是 429/403，translatedText 里塞的是告警原文
@@ -996,9 +1037,16 @@ async function llmTranslateBatch(items, fromName, toName){
 
 /* ---- 统一翻译入口 ---- */
 const TR_CACHE = new Map();          // 相同文本+语向直接命中，避免重复请求
+
+/* 上一次翻译是否因网络不通而熔断。
+ * 用于跳过随后的"译文质检"环节——既然连不上，再发一轮请求纯属浪费十几秒。
+ * 每次 new 一次翻译流程时重置。 */
+let gtNetDown = false;
+
 function trCacheKey(text, from, to, engine){ return `${engine}|${from}|${to}|${text}`; }
 
 async function translateTexts(texts, { from, to, engine, onStep, onDetect, signal }={}){
+  gtNetDown = false;
   const toLang = langOf(to);
   // 源语言为「自动检测」时，直接让翻译接口自己判定（Google 的语种识别比本地脚本猜测可靠），
   // 旧实现走 langOf('auto') 落到英语，导致中文截图被当成英文、译文原样返回。
@@ -1042,30 +1090,53 @@ async function translateTexts(texts, { from, to, engine, onStep, onDetect, signa
     if(cur.length) batches.push(cur);
 
     let cursor = 0, done = 0, failed = 0, success = 0, lastErr = null;
-    // 整批失败（含行数错位）时退回逐条，绝不按错误的行号往格子里塞译文
+    // 网络熔断：一旦确认是"连不上"，后面所有重试都直接跳过。
+    // 否则一批 40 条各试 3 次、每次等 6 秒，用户要干等好几分钟才发现根本连不上。
+    let netDown = false;
+    const isNetError = (e)=>{
+      if(!e) return false;
+      if(e.name === 'TimeoutError') return true;
+      const m = String(e.message||'');
+      return /Failed to fetch|NetworkError|net::ERR|请求超时/i.test(m);
+    };
+
+    // 整批失败时退回逐条，但只在"可能是数据问题"时才值得逐条试
     const oneByOne = async (idxs)=>{
       for(let i=0;i<idxs.length;i++){
+        if(netDown){
+          // 已确认网络不通：把剩余条目标记为失败，立刻结束
+          const rest = idxs.slice(i);
+          failed += rest.length; done += rest.length;
+          if(onStep) onStep(done, total, failed);
+          return;
+        }
         const k = idxs[i], t = texts[k];
         let got = '';
         try{ got = await gtTranslateOne(t, fromLang.gt, toLang.gt, signal, onDetect); }
         catch(e){
           if(e && e.name === 'AbortError') throw e;
           lastErr = e;
+          if(isNetError(e)) netDown = true;
           // 按已知语种翻不出来时，让接口重新判定源语言再试一次
-          if(fromLang.gt !== 'auto'){
+          if(!netDown && fromLang.gt !== 'auto'){
             try{ got = await gtTranslateOne(t, 'auto', toLang.gt, signal, onDetect); }
-            catch(e2){ if(e2 && e2.name === 'AbortError') throw e2; lastErr = e2; }
+            catch(e2){
+              if(e2 && e2.name === 'AbortError') throw e2;
+              lastErr = e2;
+              if(isNetError(e2)) netDown = true;
+            }
           }
         }
-        if(!got && fromLang.gt !== 'auto'){
+        if(!got && !netDown && fromLang.gt !== 'auto'){
           try{ got = await myMemoryTranslate(t, fromLang.gt, toLang.gt, signal); }catch(e3){ lastErr = e3; }
         }
         out[k] = got;
         if(got) success++; else failed++;
         done++;
         if(onStep) onStep(done, total, failed);
-        // 前几条全军覆没说明接口/网络不可用，别再把剩下几十条各试三遍，那会更慢
+        // 前几条全军覆没说明接口/网络不可用，别再把剩下几十条各试三遍
         if(!success && failed >= 3){
+          netDown = true;
           const rest = idxs.slice(i+1);
           failed += rest.filter(k2=>!out[k2]).length;
           done += rest.length;
@@ -1076,6 +1147,13 @@ async function translateTexts(texts, { from, to, engine, onStep, onDetect, signa
     };
     const worker = async ()=>{
       while(cursor < batches.length){
+        if(netDown){
+          // 熔断后剩余批次直接计数，不再发起请求
+          const idxs = batches[cursor++];
+          failed += idxs.length; done += idxs.length;
+          if(onStep) onStep(done, total, failed);
+          continue;
+        }
         const idxs = batches[cursor++];
         let ok = false;
         try{
@@ -1087,25 +1165,45 @@ async function translateTexts(texts, { from, to, engine, onStep, onDetect, signa
         }catch(e){
           if(e && e.name === 'AbortError') throw e;
           lastErr = e;
+          // 批量失败若是网络原因（超时/连不上），直接熔断，不进逐条。
+          // 逐条重试只对"数据问题"（行数错位、个别条目译文异常）才有意义；
+          // 网络不通时每条都要等满超时，40 条能拖到 4 分钟。
+          if(isNetError(e)) netDown = true;
         }
-        if(!ok) await oneByOne(idxs);
+        if(!ok){
+          if(netDown){
+            failed += idxs.length; done += idxs.length;
+            if(onStep) onStep(done, total, failed);
+          }else{
+            await oneByOne(idxs);
+          }
+        }
       }
     };
     await Promise.all(Array.from({length:Math.min(3, batches.length)}, worker));
+    gtNetDown = netDown;
     // 一条都没成功，多半是网络或接口不可用：抛出真实原因，别让用户对着空白猜
-    if(failed === total) throw new Error('翻译服务不可用（' + (lastErr && lastErr.message || '网络错误') + '），可在设置中改用大模型翻译');
+    if(failed === total){
+      const msg = (lastErr && lastErr.message) || '网络错误';
+      if(netDown){
+        throw new Error('连不上翻译服务（' + msg + '）。若在国内网络环境，请先打开代理；'
+          + '或到「设置」改用大模型翻译');
+      }
+      throw new Error('翻译失败（' + msg + '），可稍后重试或改用大模型翻译');
+    }
     if(failed > 0) toast(`${failed}/${total} 条未能翻译，可稍后重试或改用大模型翻译`, 'err');
   }
 
   // 译文质检：接口偶尔会把原文原样吐回来（专有名词、或源语言被判定错时），用户看到的就是"没翻译"。
   // 让接口重新判定源语言再试一次。这里同样走批量 + 并行，避免质检环节再拖慢一次。
+  // 若上面已确认网络不通，这一轮直接跳过——再发请求只会让用户多等十几秒。
   const unchanged = [];
   texts.forEach((t,i)=>{
     const src = String(t||'').trim();
     const dst = String(out[i]||'').trim();
     if(src && dst && src === dst && isTranslatableText(src)) unchanged.push(i);
   });
-  if(fromLang.gt !== 'auto' && unchanged.length){
+  if(fromLang.gt !== 'auto' && unchanged.length && !gtNetDown){
     try{
       const parts = await gtTranslateBatch(unchanged.map(i=>texts[i]), 'auto', toLang.gt, signal, onDetect);
       unchanged.forEach((i,j)=>{
@@ -3770,11 +3868,12 @@ $('#btn-copy-summary2').onclick=()=>{ navigator.clipboard.writeText($('#sum-text
 
 async function llmChat(prompt){
   const base=(S.llmBase||'').replace(/\/+$/,'');
-  const res=await fetch(base+'/chat/completions',{
+  // 大模型响应本身较慢，给 60 秒；但必须有上限，否则服务端不响应时会一直挂着
+  const res=await fetchWithTimeout(base+'/chat/completions',{
     method:'POST',
     headers:{'Content-Type':'application/json','Authorization':'Bearer '+S.llmKey},
     body:JSON.stringify({model:S.llmModel||'deepseek-chat', messages:[{role:'user',content:prompt}], temperature:0.4})
-  });
+  }, 60000);
   if(!res.ok) throw new Error('HTTP '+res.status);
   const j=await res.json();
   return j.choices&&j.choices[0]&&j.choices[0].message?j.choices[0].message.content:'';
